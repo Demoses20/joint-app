@@ -78,6 +78,7 @@
 
 .course-card h3 {
   margin: 10px 0;
+  overflow-wrap: anywhere;
 }
 
 .course-card p {
@@ -144,6 +145,15 @@
   margin-bottom: 20px;
 }
 
+.learning-error {
+  padding: 13px;
+  border-radius: 12px;
+  background: #fff0f0;
+  color: #a52222;
+  line-height: 1.6;
+  margin: 12px 0;
+}
+
 @media(max-width:600px) {
   .learning-page {
     padding: 16px 12px 110px;
@@ -175,7 +185,8 @@
     <nav class="main-nav" aria-label="Main navigation">
       <a href="index.html">Home</a>
       <a href="meetings.html">Meetings</a>
-      <a href="classes.html" class="active">Classes</a>
+      <a href="classes.html">Classes</a>
+      <a href="my-learning.html" class="active" aria-current="page">My Learning</a>
       <a href="friends.html">Friends</a>
       <a href="chat.html">Chat</a>
       <a href="timeline.html">Timeline</a>
@@ -233,18 +244,15 @@
 
   <section class="learning-panel">
     <h2>📚 My enrolled courses</h2>
-    <p class="course-meta">
-      Select a course to continue learning.
-    </p>
+    <p class="course-meta">Select a course to continue learning.</p>
 
+    <div id="learning-error" class="learning-error" hidden></div>
     <div id="my-course-list"></div>
 
     <div id="empty-learning" class="learning-empty">
       <h3>You haven't enrolled in a course yet.</h3>
       <p>Explore JOINT classes and enrol in a course to start learning.</p>
-      <a href="classes.html" class="learning-button">
-        Explore classes
-      </a>
+      <a href="classes.html" class="learning-button">Explore classes</a>
     </div>
   </section>
 
@@ -263,6 +271,7 @@
   const PUBLISHED_KEY = "joint_published_courses_demo_v1";
   const ENROLLED_KEY = "joint_enrolled_courses_demo_v1";
   const PROGRESS_KEY = "joint_course_progress_demo_v1";
+  const OPEN_COURSE_KEY = "joint_open_course_demo_v1";
 
   const SAMPLE_COURSES = [
     {
@@ -275,7 +284,9 @@
       },
       modules: [
         {
-          lessons: [{ id: "sl1", title: "Introduction to visual design" }]
+          lessons: [
+            { id: "sl1", title: "Introduction to visual design" }
+          ]
         }
       ]
     },
@@ -289,7 +300,9 @@
       },
       modules: [
         {
-          lessons: [{ id: "swl1", title: "HTML and CSS overview" }]
+          lessons: [
+            { id: "swl1", title: "HTML and CSS overview" }
+          ]
         }
       ]
     },
@@ -303,7 +316,9 @@
       },
       modules: [
         {
-          lessons: [{ id: "sbl1", title: "Planning your business" }]
+          lessons: [
+            { id: "sbl1", title: "Planning your business" }
+          ]
         }
       ]
     }
@@ -334,15 +349,15 @@
     return element;
   }
 
-  function totalLessons(course) {
-    return (course.modules || []).reduce(function (total, module) {
+  function totalLessons(item) {
+    return (item.modules || []).reduce(function (total, module) {
       return total + (module.lessons || []).length;
     }, 0);
   }
 
   function getCompleted(courseId) {
     const record = read(PROGRESS_KEY).find(function (item) {
-      return item.courseId === courseId;
+      return item && item.courseId === courseId;
     });
 
     return record && Array.isArray(record.completed)
@@ -350,36 +365,41 @@
       : [];
   }
 
-  function safePublishedCourses() {
-    return read(PUBLISHED_KEY).filter(function (item) {
-      return item && item.course && item.course.title;
+  function getCourses() {
+    const published = read(PUBLISHED_KEY).filter(function (item) {
+      return item && item.id && item.course &&
+        typeof item.course.title === "string";
     });
-  }
 
-  function loadCourses() {
+    const allCourses = new Map();
+
+    SAMPLE_COURSES.forEach(function (item) {
+      allCourses.set(item.id, item);
+    });
+
+    published.forEach(function (item) {
+      allCourses.set(item.id, item);
+    });
+
     const enrolledIds = read(ENROLLED_KEY);
-    const published = safePublishedCourses();
-    const courses = published.concat(SAMPLE_COURSES);
 
-    return enrolledIds.map(function (id) {
-      return courses.find(function (course) {
-        return course.id === id;
-      });
+    return [...new Set(enrolledIds)].map(function (id) {
+      return allCourses.get(id);
     }).filter(Boolean);
   }
 
   function openCourse(courseId) {
     try {
-      sessionStorage.setItem("joint_open_course_demo_v1", courseId);
+      sessionStorage.setItem(OPEN_COURSE_KEY, courseId);
     } catch (error) {
-      // Navigation still works when session storage is unavailable.
+      // The learner can still open the Classes page.
     }
 
     window.location.href = "classes.html";
   }
 
   function render() {
-    const courses = loadCourses();
+    const courses = getCourses();
     const container = $("my-course-list");
 
     container.replaceChildren();
@@ -391,52 +411,82 @@
 
     courses.forEach(function (item) {
       const lessons = totalLessons(item);
-      const completed = getCompleted(item.id);
-      const validCompleted = new Set(completed).size;
+      const completed = new Set(getCompleted(item.id));
 
-      totalCompleted += Math.min(validCompleted, lessons);
+      // Only count lesson IDs that actually belong to this course.
+      const validLessonIds = new Set();
+
+      (item.modules || []).forEach(function (module, moduleIndex) {
+        (module.lessons || []).forEach(function (lesson, lessonIndex) {
+          validLessonIds.add(
+            lesson.id || item.id + "-" + moduleIndex + "-" + lessonIndex
+          );
+        });
+      });
+
+      let completedCount = 0;
+
+      validLessonIds.forEach(function (lessonId) {
+        if (completed.has(lessonId)) completedCount++;
+      });
+
+      totalCompleted += completedCount;
       totalAvailable += lessons;
 
       const percentage = lessons > 0
-        ? Math.min(100, Math.round(validCompleted / lessons * 100))
+        ? Math.round(completedCount / lessons * 100)
         : 0;
 
       const card = makeElement("article", undefined, "course-card");
 
-      card.appendChild(makeElement("span",
-        item.course.category || "Learning", "pill"));
+      card.appendChild(makeElement(
+        "span",
+        item.course.category || "Learning",
+        "pill"
+      ));
 
       card.appendChild(makeElement("h3", item.course.title));
 
-      card.appendChild(makeElement("p",
-        item.course.description || "Continue learning at your own pace."));
+      card.appendChild(makeElement(
+        "p",
+        item.course.description || "Continue learning at your own pace."
+      ));
 
-      card.appendChild(makeElement("p",
+      card.appendChild(makeElement(
+        "p",
         (item.course.level || "All levels") +
-        " · " + lessons + " lesson(s)",
-        "course-meta"));
+          " · " + lessons + " lesson(s)",
+        "course-meta"
+      ));
 
-      card.appendChild(makeElement("p",
-        validCompleted + " of " + lessons + " lessons completed"));
+      card.appendChild(makeElement(
+        "p",
+        completedCount + " of " + lessons + " lessons completed"
+      ));
 
       const track = makeElement("div", undefined, "progress-track");
       track.setAttribute("role", "progressbar");
       track.setAttribute("aria-valuemin", "0");
       track.setAttribute("aria-valuemax", "100");
       track.setAttribute("aria-valuenow", String(percentage));
-      track.setAttribute("aria-label", "Course progress");
+      track.setAttribute("aria-label", item.course.title + " progress");
 
       const fill = makeElement("div", undefined, "progress-fill");
       fill.style.width = percentage + "%";
+
       track.appendChild(fill);
       card.appendChild(track);
 
       card.appendChild(makeElement("strong", percentage + "% complete"));
 
-      const button = makeElement("button",
-        "Continue learning", "learning-button");
+      const button = makeElement(
+        "button",
+        "Continue learning",
+        "learning-button"
+      );
 
       button.type = "button";
+
       button.addEventListener("click", function () {
         openCourse(item.id);
       });
@@ -455,6 +505,12 @@
 
     $("empty-learning").style.display =
       courses.length ? "none" : "block";
+
+    $("learning-error").hidden = false;
+    $("learning-error").textContent =
+      "Progress is stored locally in this browser and is not yet synced online.";
+    $("learning-error").style.background = "#fff5d9";
+    $("learning-error").style.color = "#755719";
   }
 
   render();
