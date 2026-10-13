@@ -4,158 +4,1228 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#6938d1">
-<title>Explore classes — JOINT</title>
+
+<title>Explore Classes — JOINT</title>
+
 <link rel="stylesheet" href="style.css">
+
 <style>
-.class-card{min-width:0;display:flex;flex-direction:column;gap:10px}
-.class-card h3{margin:4px 0}
-.class-card p{line-height:1.65}
-.class-card .btn{align-self:flex-start;margin-top:auto}
-.class-card .course-price{font-weight:800;color:#5424b5}
-.course-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.course-detail{margin-top:18px}
-.course-detail .lesson-row{border:1px solid #e7e0f1;border-radius:12px;padding:14px;margin:12px 0;background:#fcfaff}
-.course-detail iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;margin-top:10px}
-.course-detail textarea{width:100%;min-height:80px;padding:12px;border:1px solid #dcd3eb;border-radius:10px;font:inherit}
-.status-message{padding:12px 14px;border-radius:12px;background:#e8f7ed;color:#237547;margin:14px 0;line-height:1.6}
-.status-message.warning{background:#fff5d9;color:#755719}
-.btn.small{padding:9px 12px;font-size:.95rem}
-@media(max-width:600px){.class-card .btn{align-self:stretch}.course-detail .actions{display:flex;flex-direction:column}.course-detail .actions .btn{width:100%}}
-</style>
-</head>
-<body>
-<header class="topbar"><div class="topbar-inner">
-<a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a>
-<nav class="main-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="meetings.html">Meetings</a><a href="classes.html" class="active">Classes</a>
-<a href="my-learning.html">My Learning</a>
-<a href="friends.html">Friends</a><a href="chat.html">Chat</a><a href="timeline.html">Timeline</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a></nav>
-<div class="top-actions"><a class="btn secondary desktop-only" href="host-meeting.html">＋ Host</a><div class="avatar" title="Your profile">JM</div></div>
-</div></header>
-<nav class="bottom-nav" aria-label="Mobile navigation"><a href="index.html"><span>⌂</span>Home</a><a href="meetings.html"><span>▣</span>Meetings</a><a href="classes.html" class="active"><span>▤</span>Classes</a><a href="friends.html"><span>♧</span>Friends</a><a href="chat.html"><span>✉</span>Chat</a></nav>
-
-<main class="page">
-  <div class="page-heading"><div><div class="eyebrow">Learn a skill</div><h1>Explore classes</h1><p class="subtitle">Discover classes, follow lessons, and learn at your own pace.</p></div></div>
-  <div class="toolbar"><input class="search" id="class-search" type="search" placeholder="Search classes or skills…" aria-label="Search classes or skills"><a class="btn" href="host-class.html">＋ Host a class</a></div>
-  <div id="class-notice" class="status-message warning">Courses created with the Course Builder appear here only when they are published in this same browser. Demo courses and enrolments are not synced online.</div>
-  <div class="grid three" id="class-list"></div>
-  <p id="class-empty" class="empty-state hide">No classes match your search.</p>
-  <section id="course-detail" class="card course-detail" hidden></section>
-</main>
-<footer class="footer">JOINT · Learn, connect, and grow together</footer>
-<script src="navigation.js"></script>
-<script>
-(function(){
-"use strict";
-const PUBLISHED_KEY="joint_published_courses_demo_v1";
-const ENROLLED_KEY="joint_enrolled_courses_demo_v1";
-const PROGRESS_KEY="joint_course_progress_demo_v1";
-const samples=[
-{id:"joint-sample-design",course:{title:"Introduction to Graphic Design",category:"Creative skills",level:"Beginner",description:"Learn design basics, layout, and visual communication.",language:"English",price:0,currency:"NGN"},modules:[{id:"sd1",title:"Design basics",description:"Explore core design principles.",lessons:[{id:"sl1",title:"Introduction to visual design",content:"Learn about layout, contrast, alignment and visual hierarchy.",video:"",resource:""}]}],quizzes:[],assignments:[],sample:true},
-{id:"joint-sample-web",course:{title:"Web Design Fundamentals",category:"Technology",level:"Beginner",description:"Understand HTML, CSS, and how websites are structured.",language:"English",price:0,currency:"NGN"},modules:[{id:"sw1",title:"Getting started",description:"Learn the building blocks of a website.",lessons:[{id:"swl1",title:"HTML and CSS overview",content:"HTML structures content. CSS controls its visual presentation.",video:"",resource:""}]}],quizzes:[],assignments:[],sample:true},
-{id:"joint-sample-business",course:{title:"Small Business Essentials",category:"Business",level:"Beginner",description:"Explore planning, customer service, and digital tools.",language:"English",price:0,currency:"NGN"},modules:[{id:"sb1",title:"Business foundations",description:"Build a foundation for running a small business.",lessons:[{id:"sbl1",title:"Planning your business",content:"Identify your customers, value proposition and basic costs.",video:"",resource:""}]}],quizzes:[],assignments:[],sample:true}
-];
-const $=id=>document.getElementById(id);
-let allCourses=[],activeCourse=null;
-function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e}
-function read(key){try{const v=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(v)?v:[]}catch(e){return []}}
-function write(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true}catch(e){return false}}
-function formatPrice(c){const amount=Number(c.price||0);try{return amount===0?"Free":new Intl.NumberFormat(undefined,{style:"currency",currency:c.currency||"NGN"}).format(amount)}catch(e){return (c.currency||"NGN")+" "+amount.toFixed(2)}}
-function getPublished(){return read(PUBLISHED_KEY).filter(x=>x&&x.course&&x.course.title).map(x=>({...x,sample:false}))}
-function enrolledIds(){return read(ENROLLED_KEY)}
-function isEnrolled(id){return enrolledIds().includes(id)}
-function getProgress(id){const p=read(PROGRESS_KEY);return p.find(x=>x.courseId===id)||{completed:[]}}
-function totalLessons(course){return (course.modules||[]).reduce((n,m)=>n+(m.lessons||[]).length,0)}
-function renderCourses(){
- const query=$("class-search").value.trim().toLowerCase();
- const container=$("class-list");container.replaceChildren();
- allCourses=[...getPublished(),...samples];
- const filtered=allCourses.filter(item=>{const c=item.course;const hay=[c.title,c.category,c.description,c.level,c.language].join(" ").toLowerCase();return hay.includes(query)});
- filtered.forEach(item=>{
-  const c=item.course,card=el("article",undefined,"card class-card");
-  card.appendChild(el("div",item.sample?"📘":"🎓","icon-box"));
-  card.appendChild(el("span",c.category||"Learning","pill"));
-  card.appendChild(el("h3",c.title));
-  card.appendChild(el("p",c.description||"No course description provided."));
-  const meta=el("div",undefined,"course-meta");meta.appendChild(el("span",(item.modules||[]).length+" module(s)","muted"));meta.appendChild(el("span",totalLessons(item)+" lesson(s)","muted"));card.appendChild(meta);
-  card.appendChild(el("p",formatPrice(c),"course-price"));
-  if(isEnrolled(item.id))card.appendChild(el("span","Enrolled","pill"));
-  const btn=el("button","View course","btn secondary");btn.type="button";btn.addEventListener("click",()=>openCourse(item));card.appendChild(btn);
-  container.appendChild(card);
- });
- $("class-empty").classList.toggle("hide",filtered.length>0);
-}
-function openCourse(course){
- activeCourse=course;
- const detail=$("course-detail");detail.replaceChildren();detail.hidden=false;
- const c=course.course;
- detail.appendChild(el("span",c.category||"Learning","pill"));
- detail.appendChild(el("h2",c.title));
- detail.appendChild(el("p",c.description||"No description provided."));
- detail.appendChild(el("p",(c.level||"All levels")+" · "+(c.language||"English")+" · "+formatPrice(c),"muted"));
- if(course.sample)detail.appendChild(el("div","This is a sample course included with JOINT.","status-message warning"));
- const enrolled=isEnrolled(course.id);
- if(!enrolled){
-  const actions=el("div",undefined,"actions");
-  const enroll=el("button",Number(c.price||0)>0?"Demo enrolment":"Enrol in course","btn");enroll.type="button";
-  enroll.addEventListener("click",()=>{if(Number(c.price||0)>0){alert("This course has a demo price. Real checkout is not connected yet, so no payment will be taken.");return}const ids=enrolledIds();if(!ids.includes(course.id))ids.push(course.id);if(!write(ENROLLED_KEY,ids)){alert("Could not save enrolment in this browser.");return}renderCourses();openCourse(course)});actions.appendChild(enroll);detail.appendChild(actions);
- }else{
-  detail.appendChild(el("span","You are enrolled in this browser.","pill"));
- }
- detail.appendChild(el("h3","Course curriculum"));
- const progress=getProgress(course.id),completed=new Set(progress.completed||[]);
- const total=totalLessons(course);
- detail.appendChild(el("p",completed.size+" of "+total+" lessons completed","muted"));
- (course.modules||[]).forEach((mod,mi)=>{
-  const section=el("section",undefined,"preview");section.appendChild(el("h3",(mi+1)+". "+mod.title));
-  if(mod.description)section.appendChild(el("p",mod.description,"muted"));
-  (mod.lessons||[]).forEach((lesson,li)=>{
-   const row=el("article",undefined,"lesson-row");row.appendChild(el("h4",lesson.title));
-   if(lesson.content)row.appendChild(el("p",lesson.content));
-   const embed=lesson.video?youtubeEmbed(lesson.video):"";
-   if(embed){const frame=document.createElement("iframe");frame.src=embed;frame.title=lesson.title;frame.loading="lazy";frame.allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";frame.referrerPolicy="strict-origin-when-cross-origin";frame.allowFullscreen=true;row.appendChild(frame)}
-   if(lesson.resource){const link=el("a","Open learning material");link.href=lesson.resource;link.target="_blank";link.rel="noopener noreferrer";row.appendChild(link)}
-   const key=lesson.id||course.id+"-"+mi+"-"+li;
-   if(enrolled){
-    const label=el("label");label.style.display="block";label.style.marginTop="12px";
-    const check=document.createElement("input");check.type="checkbox";check.checked=completed.has(key);check.addEventListener("change",()=>{const p=getProgress(course.id);let set=new Set(p.completed||[]);if(check.checked)set.add(key);else set.delete(key);const list=read(PROGRESS_KEY).filter(x=>x.courseId!==course.id);list.push({courseId:course.id,completed:Array.from(set)});write(PROGRESS_KEY,list);openCourse(course);renderCourses()});
-    label.appendChild(check);label.appendChild(document.createTextNode(" Mark lesson as completed"));row.appendChild(label);
-   }
-   section.appendChild(row);
-  });
-  detail.appendChild(section);
- });
- if((course.quizzes||[]).length){detail.appendChild(el("h3","Course quizzes"));course.quizzes.forEach((q,i)=>{const box=el("div",undefined,"preview");box.appendChild(el("p",(i+1)+". "+q.question));(q.options||[]).forEach((opt,j)=>box.appendChild(el("p",String.fromCharCode(65+j)+". "+opt)));box.appendChild(el("p","Quiz is available in this preview; scored submissions are not stored.","muted"));detail.appendChild(box)})}
- if((course.assignments||[]).length){detail.appendChild(el("h3","Assignments"));course.assignments.forEach(a=>{const box=el("div",undefined,"preview");box.appendChild(el("h4",a.title));box.appendChild(el("p",a.instructions));if(a.deadline)box.appendChild(el("p","Deadline: "+a.deadline,"muted"));detail.appendChild(box)})}
- const close=el("button","Close course details","btn secondary");close.type="button";close.addEventListener("click",()=>{detail.hidden=true;activeCourse=null});detail.appendChild(close);
- detail.scrollIntoView({behavior:"smooth",block:"start"});
-}
-function youtubeEmbed(value){try{const u=new URL(value);let id="";if(u.hostname==="youtu.be")id=u.pathname.slice(1);else if(["youtube.com","www.youtube.com","m.youtube.com"].includes(u.hostname)){if(u.pathname==="/watch")id=u.searchParams.get("v")||"";else if(u.pathname.startsWith("/embed/")||u.pathname.startsWith("/shorts/"))id=u.pathname.split("/")[2]||""}return /^[A-Za-z0-9_-]{11}$/.test(id)?"https://www.youtube-nocookie.com/embed/"+id:""}catch(e){return ""}}
-$("class-search").addEventListener("input",renderCourses);
-
-let requestedCourseId = "";
-
-try {
-  requestedCourseId =
-    sessionStorage.getItem("joint_open_course_demo_v1") || "";
-
-  sessionStorage.removeItem("joint_open_course_demo_v1");
-} catch (error) {
-  requestedCourseId = "";
+.class-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-renderCourses();
+.class-card h3 {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
 
-if (requestedCourseId) {
-  const requestedCourse = allCourses.find(function (course) {
-    return course.id === requestedCourseId;
-  });
+.class-card p {
+  line-height: 1.65;
+}
 
-  if (requestedCourse && isEnrolled(requestedCourse.id)) {
-    openCourse(requestedCourse);
+.class-card .btn {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.class-card .course-price {
+  font-weight: 800;
+  color: #5424b5;
+}
+
+.course-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.course-detail {
+  margin-top: 18px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.course-detail .lesson-row {
+  border: 1px solid #e7e0f1;
+  border-radius: 12px;
+  padding: 14px;
+  margin: 12px 0;
+  background: #fcfaff;
+  min-width: 0;
+}
+
+.course-detail iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 12px;
+  margin-top: 10px;
+}
+
+.course-detail textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid #dcd3eb;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.course-detail input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  accent-color: #6938d1;
+  vertical-align: middle;
+}
+
+.course-detail label {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.status-message {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #e8f7ed;
+  color: #237547;
+  margin: 14px 0;
+  line-height: 1.6;
+}
+
+.status-message.warning {
+  background: #fff5d9;
+  color: #755719;
+}
+
+.status-message.error {
+  background: #fdeaea;
+  color: #9b2525;
+}
+
+.btn.small {
+  padding: 9px 12px;
+  font-size: .95rem;
+}
+
+.course-detail[hidden] {
+  display: none !important;
+}
+
+.lesson-progress {
+  margin: 12px 0 18px;
+}
+
+.lesson-progress-track {
+  height: 10px;
+  background: #eee7fa;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.lesson-progress-fill {
+  height: 100%;
+  background: #6938d1;
+  border-radius: 20px;
+  transition: width .2s ease;
+}
+
+@media (max-width: 600px) {
+  .class-card .btn {
+    align-self: stretch;
+    width: 100%;
+  }
+
+  .course-detail .actions {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .course-detail .actions .btn {
+    width: 100%;
+  }
+
+  .course-detail .lesson-row {
+    padding: 12px;
   }
 }
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+
+    <a class="brand" href="index.html">
+      <span class="brand-mark">J</span> JOINT
+    </a>
+
+    <nav class="main-nav" aria-label="Main navigation">
+      <a href="index.html">Home</a>
+      <a href="meetings.html">Meetings</a>
+      <a href="classes.html" class="active">Classes</a>
+      <a href="my-learning.html">My Learning</a>
+      <a href="friends.html">Friends</a>
+      <a href="chat.html">Chat</a>
+      <a href="timeline.html">Timeline</a>
+      <a href="profile.html">Profile</a>
+      <a href="settings.html">Settings</a>
+    </nav>
+
+    <div class="top-actions">
+      <a class="btn secondary desktop-only" href="host-meeting.html">
+        ＋ Host
+      </a>
+
+      <div class="avatar" title="Your profile">JM</div>
+    </div>
+
+  </div>
+</header>
+
+<nav class="bottom-nav" aria-label="Mobile navigation">
+  <a href="index.html"><span>⌂</span>Home</a>
+  <a href="meetings.html"><span>▣</span>Meetings</a>
+  <a href="classes.html" class="active"><span>▤</span>Classes</a>
+  <a href="friends.html"><span>♧</span>Friends</a>
+  <a href="chat.html"><span>✉</span>Chat</a>
+</nav>
+
+<main class="page">
+
+  <div class="page-heading">
+    <div>
+      <div class="eyebrow">Learn a skill</div>
+      <h1>Explore classes</h1>
+      <p class="subtitle">
+        Discover classes, follow lessons, and learn at your own pace.
+      </p>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input
+      class="search"
+      id="class-search"
+      type="search"
+      placeholder="Search classes or skills…"
+      aria-label="Search classes or skills"
+    >
+
+    <a class="btn" href="host-class.html">
+      ＋ Host a class
+    </a>
+  </div>
+
+  <div id="class-notice" class="status-message warning">
+    Courses created with the Course Builder appear here when published
+    in this browser. Demo courses and enrolments are stored locally and
+    are not synchronized online.
+  </div>
+
+  <div class="grid three" id="class-list"></div>
+
+  <p id="class-empty" class="empty-state hide">
+    No classes match your search.
+  </p>
+
+  <section
+    id="course-detail"
+    class="card course-detail"
+    aria-live="polite"
+    hidden
+  ></section>
+
+</main>
+
+<footer class="footer">
+  JOINT · Learn, connect, and grow together
+</footer>
+
+<script src="navigation.js"></script>
+
+<script>
+(function () {
+  "use strict";
+
+  const PUBLISHED_KEY = "joint_published_courses_demo_v1";
+  const ENROLLED_KEY = "joint_enrolled_courses_demo_v1";
+  const PROGRESS_KEY = "joint_course_progress_demo_v1";
+  const OPEN_COURSE_KEY = "joint_open_course_demo_v1";
+
+  const samples = [
+    {
+      id: "joint-sample-design",
+
+      course: {
+        title: "Introduction to Graphic Design",
+        category: "Creative skills",
+        level: "Beginner",
+        description:
+          "Learn design basics, layout, and visual communication.",
+        language: "English",
+        price: 0,
+        currency: "NGN"
+      },
+
+      modules: [
+        {
+          id: "sd1",
+          title: "Design basics",
+          description: "Explore core design principles.",
+
+          lessons: [
+            {
+              id: "sl1",
+              title: "Introduction to visual design",
+              content:
+                "Learn about layout, contrast, alignment and visual hierarchy.",
+              video: "",
+              resource: ""
+            }
+          ]
+        }
+      ],
+
+      quizzes: [],
+      assignments: [],
+      sample: true
+    },
+
+    {
+      id: "joint-sample-web",
+
+      course: {
+        title: "Web Design Fundamentals",
+        category: "Technology",
+        level: "Beginner",
+        description:
+          "Understand HTML, CSS, and how websites are structured.",
+        language: "English",
+        price: 0,
+        currency: "NGN"
+      },
+
+      modules: [
+        {
+          id: "sw1",
+          title: "Getting started",
+          description:
+            "Learn the building blocks of a website.",
+
+          lessons: [
+            {
+              id: "swl1",
+              title: "HTML and CSS overview",
+              content:
+                "HTML structures content. CSS controls its visual presentation.",
+              video: "",
+              resource: ""
+            }
+          ]
+        }
+      ],
+
+      quizzes: [],
+      assignments: [],
+      sample: true
+    },
+
+    {
+      id: "joint-sample-business",
+
+      course: {
+        title: "Small Business Essentials",
+        category: "Business",
+        level: "Beginner",
+        description:
+          "Explore planning, customer service, and digital tools.",
+        language: "English",
+        price: 0,
+        currency: "NGN"
+      },
+
+      modules: [
+        {
+          id: "sb1",
+          title: "Business foundations",
+          description:
+            "Build a foundation for running a small business.",
+
+          lessons: [
+            {
+              id: "sbl1",
+              title: "Planning your business",
+              content:
+                "Identify your customers, value proposition and basic costs.",
+              video: "",
+              resource: ""
+            }
+          ]
+        }
+      ],
+
+      quizzes: [],
+      assignments: [],
+      sample: true
+    }
+  ];
+
+  const $ = function (id) {
+    return document.getElementById(id);
+  };
+
+  let allCourses = [];
+  let activeCourse = null;
+
+  function el(tag, text, className) {
+    const element = document.createElement(tag);
+
+    if (text !== undefined && text !== null) {
+      element.textContent = String(text);
+    }
+
+    if (className) {
+      element.className = className;
+    }
+
+    return element;
+  }
+
+  function read(key) {
+    try {
+      const value = JSON.parse(
+        localStorage.getItem(key) || "[]"
+      );
+
+      return Array.isArray(value) ? value : [];
+
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function write(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function formatPrice(course) {
+    const amount = Number(course.price || 0);
+
+    if (amount === 0) {
+      return "Free";
+    }
+
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: course.currency || "NGN"
+      }).format(amount);
+
+    } catch (error) {
+      return (course.currency || "NGN") + " " +
+        amount.toFixed(2);
+    }
+  }
+
+  function getPublished() {
+    return read(PUBLISHED_KEY)
+      .filter(function (item) {
+        return item &&
+          item.id &&
+          item.course &&
+          item.course.title;
+      })
+      .map(function (item) {
+        return Object.assign({}, item, {
+          sample: false
+        });
+      });
+  }
+
+  function enrolledIds() {
+    return read(ENROLLED_KEY).filter(function (id) {
+      return typeof id === "string";
+    });
+  }
+
+  function isEnrolled(courseId) {
+    return enrolledIds().includes(courseId);
+  }
+
+  function getProgress(courseId) {
+    const records = read(PROGRESS_KEY);
+
+    return records.find(function (item) {
+      return item && item.courseId === courseId;
+    }) || {
+      courseId: courseId,
+      completed: []
+    };
+  }
+
+  function totalLessons(course) {
+    return (course.modules || []).reduce(
+      function (total, module) {
+        return total + (module.lessons || []).length;
+      },
+      0
+    );
+  }
+
+  /*
+   * Count only lesson IDs that actually belong to this course.
+   * This prevents stale or duplicate entries from inflating progress.
+   */
+  function getCourseProgress(course) {
+    const record = getProgress(course.id);
+
+    const completedIds = new Set(
+      Array.isArray(record.completed)
+        ? record.completed
+        : []
+    );
+
+    let completedCount = 0;
+
+    (course.modules || []).forEach(
+      function (module, moduleIndex) {
+        (module.lessons || []).forEach(
+          function (lesson, lessonIndex) {
+            const lessonId =
+              lesson.id ||
+              course.id + "-" +
+              moduleIndex + "-" +
+              lessonIndex;
+
+            if (completedIds.has(lessonId)) {
+              completedCount++;
+            }
+          }
+        );
+      }
+    );
+
+    const total = totalLessons(course);
+
+    const percentage = total > 0
+      ? Math.round(completedCount / total * 100)
+      : 0;
+
+    return {
+      completedIds: completedIds,
+      completedCount: completedCount,
+      total: total,
+      percentage: percentage
+    };
+  }
+
+  function showMessage(message, type) {
+    const notice = $("class-notice");
+
+    notice.textContent = message;
+
+    notice.className = "status-message";
+
+    if (type) {
+      notice.classList.add(type);
+    }
+  }
+
+  function renderCourses() {
+    const query = $("class-search").value
+      .trim()
+      .toLowerCase();
+
+    const container = $("class-list");
+
+    container.replaceChildren();
+
+    allCourses = [
+      ...getPublished(),
+      ...samples
+    ];
+
+    const filtered = allCourses.filter(
+      function (item) {
+        const course = item.course;
+
+        const searchableText = [
+          course.title,
+          course.category,
+          course.description,
+          course.level,
+          course.language
+        ].join(" ").toLowerCase();
+
+        return searchableText.includes(query);
+      }
+    );
+
+    filtered.forEach(function (item) {
+      const course = item.course;
+
+      const card = el(
+        "article",
+        undefined,
+        "card class-card"
+      );
+
+      card.appendChild(
+        el(
+          "div",
+          item.sample ? "📘" : "🎓",
+          "icon-box"
+        )
+      );
+
+      card.appendChild(
+        el("span", course.category || "Learning", "pill")
+      );
+
+      card.appendChild(
+        el("h3", course.title)
+      );
+
+      card.appendChild(
+        el(
+          "p",
+          course.description || "No course description provided."
+        )
+      );
+
+      const meta = el(
+        "div",
+        undefined,
+        "course-meta"
+      );
+
+      meta.appendChild(
+        el(
+          "span",
+          (course.modules || []).length + " module(s)",
+          "muted"
+        )
+      );
+
+      meta.appendChild(
+        el(
+          "span",
+          totalLessons(item) + " lesson(s)",
+          "muted"
+        )
+      );
+
+      card.appendChild(meta);
+
+      card.appendChild(
+        el(
+          "p",
+          formatPrice(course),
+          "course-price"
+        )
+      );
+
+      if (isEnrolled(item.id)) {
+        card.appendChild(
+          el("span", "Enrolled", "pill")
+        );
+
+        const progress = getCourseProgress(item);
+
+        card.appendChild(
+          el(
+            "p",
+            progress.percentage + "% complete",
+            "muted"
+          )
+        );
+      }
+
+      const button = el(
+        "button",
+        "View course",
+        "btn secondary"
+      );
+
+      button.type = "button";
+
+      button.addEventListener(
+        "click",
+        function () {
+          openCourse(item);
+        }
+      );
+
+      card.appendChild(button);
+
+      container.appendChild(card);
+    });
+
+    $("class-empty").classList.toggle(
+      "hide",
+      filtered.length > 0
+    );
+  }
+
+  function openCourse(course) {
+    activeCourse = course;
+
+    const detail = $("course-detail");
+
+    detail.replaceChildren();
+    detail.hidden = false;
+
+    const courseInfo = course.course;
+
+    detail.appendChild(
+      el("span", courseInfo.category || "Learning", "pill")
+    );
+
+    detail.appendChild(
+      el("h2", courseInfo.title)
+    );
+
+    detail.appendChild(
+      el(
+        "p",
+        courseInfo.description || "No description provided."
+      )
+    );
+
+    detail.appendChild(
+      el(
+        "p",
+        (courseInfo.level || "All levels") +
+        " · " +
+        (courseInfo.language || "English") +
+        " · " +
+        formatPrice(courseInfo),
+        "muted"
+      )
+    );
+
+    if (course.sample) {
+      detail.appendChild(
+        el(
+          "div",
+          "This is a sample course included with JOINT.",
+          "status-message warning"
+        )
+      );
+    }
+
+    const enrolled = isEnrolled(course.id);
+
+    if (!enrolled) {
+      const actions = el(
+        "div",
+        undefined,
+        "actions"
+      );
+
+      const enrolButton = el(
+        "button",
+        Number(courseInfo.price || 0) > 0
+          ? "Demo enrolment"
+          : "Enrol in course",
+        "btn"
+      );
+
+      enrolButton.type = "button";
+
+      enrolButton.addEventListener(
+        "click",
+        function () {
+          enrolCourse(course);
+        }
+      );
+
+      actions.appendChild(enrolButton);
+
+      detail.appendChild(actions);
+
+    } else {
+      detail.appendChild(
+        el(
+          "span",
+          "You are enrolled in this browser.",
+          "pill"
+        )
+      );
+    }
+
+    detail.appendChild(
+      el("h3", "Course curriculum")
+    );
+
+    const progress = getCourseProgress(course);
+
+    const progressBox = el(
+      "div",
+      undefined,
+      "lesson-progress"
+    );
+
+    progressBox.appendChild(
+      el(
+        "p",
+        progress.completedCount +
+        " of " +
+        progress.total +
+        " lessons completed",
+        "muted"
+      )
+    );
+
+    const progressTrack = el(
+      "div",
+      undefined,
+      "lesson-progress-track"
+    );
+
+    progressTrack.setAttribute("role", "progressbar");
+    progressTrack.setAttribute("aria-valuemin", "0");
+    progressTrack.setAttribute("aria-valuemax", "100");
+    progressTrack.setAttribute(
+      "aria-valuenow",
+      String(progress.percentage)
+    );
+
+    progressTrack.setAttribute(
+      "aria-label",
+      "Course completion progress"
+    );
+
+    const progressFill = el(
+      "div",
+      undefined,
+      "lesson-progress-fill"
+    );
+
+    progressFill.style.width =
+      progress.percentage + "%";
+
+    progressTrack.appendChild(progressFill);
+    progressBox.appendChild(progressTrack);
+
+    detail.appendChild(progressBox);
+
+    (course.modules || []).forEach(
+      function (module, moduleIndex) {
+        const section = el(
+          "section",
+          undefined,
+          "preview"
+        );
+
+        section.appendChild(
+          el(
+            "h3",
+            (moduleIndex + 1) + ". " + module.title
+          )
+        );
+
+        if (module.description) {
+          section.appendChild(
+            el("p", module.description, "muted")
+          );
+        }
+
+        (module.lessons || []).forEach(
+          function (lesson, lessonIndex) {
+            const row = el(
+              "article",
+              undefined,
+              "lesson-row"
+            );
+
+            row.appendChild(
+              el("h4", lesson.title || "Lesson")
+            );
+
+            if (lesson.content) {
+              row.appendChild(
+                el("p", lesson.content)
+              );
+            }
+
+            const embed = lesson.video
+              ? youtubeEmbed(lesson.video)
+              : "";
+
+            if (embed) {
+              const frame = document.createElement("iframe");
+
+              frame.src = embed;
+              frame.title = lesson.title || "Course video";
+              frame.loading = "lazy";
+
+              frame.allow =
+                "accelerometer; autoplay; clipboard-write; " +
+                "encrypted-media; gyroscope; picture-in-picture; web-share";
+
+              frame.referrerPolicy =
+                "strict-origin-when-cross-origin";
+
+              frame.allowFullscreen = true;
+
+              row.appendChild(frame);
+            }
+
+            if (lesson.resource) {
+              const link = el(
+                "a",
+                "Open learning material"
+              );
+
+              link.href = lesson.resource;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+
+              row.appendChild(link);
+            }
+
+            const lessonId =
+              lesson.id ||
+              course.id + "-" +
+              moduleIndex + "-" +
+              lessonIndex;
+
+            if (enrolled) {
+              const label = document.createElement("label");
+
+              label.style.display = "block";
+              label.style.marginTop = "12px";
+
+              const checkbox = document.createElement("input");
+
+              checkbox.type = "checkbox";
+
+              checkbox.checked =
+                progress.completedIds.has(lessonId);
+
+              checkbox.addEventListener(
+                "change",
+                function () {
+                  saveLessonProgress(
+                    course,
+                    lessonId,
+                    checkbox.checked
+                  );
+                }
+              );
+
+              label.appendChild(checkbox);
+
+              label.appendChild(
+                document.createTextNode(
+                  " Mark lesson as completed"
+                )
+              );
+
+              row.appendChild(label);
+            }
+
+            section.appendChild(row);
+          }
+        );
+
+        detail.appendChild(section);
+      }
+    );
+
+    if ((course.quizzes || []).length > 0) {
+      detail.appendChild(
+        el("h3", "Course quizzes")
+      );
+
+      course.quizzes.forEach(
+        function (quiz, quizIndex) {
+          const box = el(
+            "div",
+            undefined,
+            "preview"
+          );
+
+          box.appendChild(
+            el(
+              "p",
+              (quizIndex + 1) + ". " + quiz.question
+            )
+          );
+
+          (quiz.options || []).forEach(
+            function (option, optionIndex) {
+              box.appendChild(
+                el(
+                  "p",
+                  String.fromCharCode(65 + optionIndex) +
+                  ". " +
+                  option
+                )
+              );
+            }
+          );
+
+          box.appendChild(
+            el(
+              "p",
+              "Quiz is available in this preview; scored submissions are not stored.",
+              "muted"
+            )
+          );
+
+          detail.appendChild(box);
+        }
+      );
+    }
+
+    if ((course.assignments || []).length > 0) {
+      detail.appendChild(
+        el("h3", "Assignments")
+      );
+
+      course.assignments.forEach(
+        function (assignment) {
+          const box = el(
+            "div",
+            undefined,
+            "preview"
+          );
+
+          box.appendChild(
+            el("h4", assignment.title || "Assignment")
+          );
+
+          box.appendChild(
+            el("p", assignment.instructions || "")
+          );
+
+          if (assignment.deadline) {
+            box.appendChild(
+              el(
+                "p",
+                "Deadline: " + assignment.deadline,
+                "muted"
+              )
+            );
+          }
+
+          detail.appendChild(box);
+        }
+      );
+    }
+
+    const closeButton = el(
+      "button",
+      "Close course details",
+      "btn secondary"
+    );
+
+    closeButton.type = "button";
+
+    closeButton.addEventListener(
+      "click",
+      function () {
+        detail.hidden = true;
+        activeCourse = null;
+
+        $("class-list").scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+      }
+    );
+
+    detail.appendChild(closeButton);
+
+    detail.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+
+  function enrolCourse(course) {
+    const price = Number(course.course.price || 0);
+
+    if (price > 0) {
+      alert(
+        "This course has a demo price. " +
+        "Real checkout is not connected yet, so no payment will be taken."
+      );
+
+      return;
+    }
+
+    const ids = enrolledIds();
+
+    if (!ids.includes(course.id)) {
+      ids.push(course.id);
+    }
+
+    if (!write(ENROLLED_KEY, ids)) {
+      alert(
+        "Could not save your enrolment in this browser. " +
+        "Please check your browser storage settings."
+      );
+
+      return;
+    }
+
+    showMessage(
+      "You have enrolled successfully in this browser. " +
+      "Your progress is stored locally.",
+      ""
+    );
+
+    renderCourses();
+    openCourse(course);
+  }
+
+  /*
+   * Save progress under the existing key used by My Learning.
+   * This preserves the user's current local enrolments and progress.
+   */
+  function saveLessonProgress(course, lessonId, isCompleted) {
+    const record = getProgress(course.id);
+
+    const completed = new Set(
+      Array.isArray(record.completed)
+        ? record.completed
+        : []
+    );
+
+    if (isCompleted) {
+      completed.add(lessonId);
+    } else {
+      completed.delete(lessonId);
+    }
+
+    const allRecords = read(PROGRESS_KEY).filter(
+      function (item) {
+        return item && item.courseId !== course.id;
+      }
+    );
+
+    allRecords.push({
+      courseId: course.id,
+      completed: Array.from(completed)
+    });
+
+    if (!write(PROGRESS_KEY, allRecords)) {
+      showMessage(
+        "Your progress could not be saved. " +
+        "Please check your browser storage settings.",
+        "error"
+      );
+
+      openCourse(course);
+      return;
+    }
+
+    showMessage(
+      "Lesson progress saved in this browser.",
+      ""
+    );
+
+    /*
+     * Refresh the course details and the course cards.
+     * My Learning reads the same progress storage key.
+     */
+    renderCourses();
+    openCourse(course);
+  }
+
+  function youtubeEmbed(value) {
+    try {
+      const url = new URL(value);
+
+      let id = "";
+
+      if (url.hostname === "youtu.be") {
+        id = url.pathname.slice(1);
+
+      } else if (
+        [
+          "youtube.com",
+          "www.youtube.com",
+          "m.youtube.com"
+        ].includes(url.hostname)
+      ) {
+        if (url.pathname === "/watch") {
+          id = url.searchParams.get("v") || "";
+
+        } else if (
+          url.pathname.startsWith("/embed/") ||
+          url.pathname.startsWith("/shorts/")
+        ) {
+          id = url.pathname.split("/")[2] || "";
+        }
+      }
+
+      return /^[A-Za-z0-9_-]{11}$/.test(id)
+        ? "https://www.youtube-nocookie.com/embed/" + id
+        : "";
+
+    } catch (error) {
+      return "";
+    }
+  }
+
+  $("class-search").addEventListener(
+    "input",
+    renderCourses
+  );
+
+  /*
+   * If My Learning opens this page to continue a course,
+   * automatically open that enrolled course.
+   */
+  let requestedCourseId = "";
+
+  try {
+    requestedCourseId =
+      sessionStorage.getItem(OPEN_COURSE_KEY) || "";
+
+    sessionStorage.removeItem(OPEN_COURSE_KEY);
+
+  } catch (error) {
+    requestedCourseId = "";
+  }
+
+  renderCourses();
+
+  if (requestedCourseId) {
+    const requestedCourse = allCourses.find(
+      function (course) {
+        return course.id === requestedCourseId;
+      }
+    );
+
+    if (
+      requestedCourse &&
+      isEnrolled(requestedCourse.id)
+    ) {
+      openCourse(requestedCourse);
+    }
+  }
 
 })();
 </script>
+
 </body>
 </html>
