@@ -4,57 +4,689 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#6938d1">
-<title>JOINT — Learn together</title>
+<title>JOINT — Learn, Connect and Grow</title>
+
 <link rel="stylesheet" href="style.css">
 
 <style>
-/* Home page navigation correction */
-.topbar-inner {
+/* =========================
+   JOINT SOCIAL HOME FEED
+========================= */
+
+:root {
+  --joint-purple: #6938d1;
+  --joint-purple-dark: #5424b5;
+  --joint-purple-light: #f0e8ff;
+  --joint-background: #f7f4fc;
+  --joint-border: #e7e0f1;
+  --joint-text: #242033;
+  --joint-muted: #777486;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--joint-background);
+  color: var(--joint-text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  overflow-wrap: anywhere;
+}
+
+.feed-page {
+  width: 100%;
+  max-width: 1250px;
+  margin: 0 auto;
+  padding: 22px 16px 110px;
+}
+
+.feed-welcome {
+  padding: 25px;
+  border-radius: 22px;
+  color: white;
+  background: linear-gradient(
+    135deg,
+    #5424b5,
+    #6938d1,
+    #9869f1
+  );
+  margin-bottom: 22px;
+}
+
+.feed-welcome .eyebrow {
+  color: #eee5ff;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.feed-welcome h1 {
+  color: white;
+  font-size: clamp(30px, 6vw, 43px);
+  line-height: 1.15;
+  margin: 12px 0;
+}
+
+.feed-welcome p {
+  line-height: 1.75;
+  max-width: 650px;
+  margin-bottom: 20px;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.welcome-actions .btn {
+  background: white;
+  color: var(--joint-purple-dark);
+}
+
+.welcome-actions .btn.secondary {
+  background: transparent;
+  color: white;
+  border: 1px solid #ffffff80;
+}
+
+/* Feed layout */
+
+.feed-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.feed-main {
   min-width: 0;
 }
 
-.main-nav {
+.feed-sidebar {
+  display: none;
+}
+
+.feed-panel {
+  background: white;
+  border: 1px solid var(--joint-border);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 18px;
+  min-width: 0;
+}
+
+.feed-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.feed-section-heading h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+/* Composer */
+
+.composer {
+  background: white;
+  border: 1px solid var(--joint-border);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.composer-top {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.composer-avatar,
+.post-avatar,
+.organization-logo {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--joint-purple-light);
+  color: var(--joint-purple);
+  font-weight: 800;
+  overflow: hidden;
+}
+
+.composer-avatar {
+  border-radius: 15px;
+}
+
+.composer-heading {
+  min-width: 0;
+}
+
+.composer-heading strong {
+  display: block;
+}
+
+.composer-heading small {
+  display: block;
+  color: var(--joint-muted);
+  margin-top: 3px;
+}
+
+.composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 105px;
+  padding: 14px;
+  border: 1px solid var(--joint-border);
+  border-radius: 13px;
+  resize: vertical;
+  outline-color: var(--joint-purple);
+  background: #fcfaff;
+}
+
+.composer-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 13px;
+}
+
+.composer-fields label {
+  display: block;
+  min-width: 0;
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.composer-fields input,
+.composer-fields select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-top: 7px;
+  padding: 12px;
+  border: 1px solid var(--joint-border);
+  border-radius: 10px;
+  background: white;
+}
+
+.composer-note {
+  color: var(--joint-muted);
+  font-size: .85rem;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+
+.composer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.composer-actions .btn {
+  border: 0;
+}
+
+/* Feed filters */
+
+.feed-filters {
+  display: flex;
+  gap: 9px;
   overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
+  padding: 3px 0 12px;
+  margin-bottom: 8px;
   scrollbar-width: thin;
 }
 
-.main-nav a {
+.feed-filter {
   flex: 0 0 auto;
+  border: 1px solid var(--joint-border);
+  border-radius: 999px;
+  padding: 10px 15px;
+  background: white;
+  color: var(--joint-muted);
+  font-weight: 700;
 }
 
-.bottom-nav {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  align-items: center;
+.feed-filter.active {
+  background: var(--joint-purple);
+  color: white;
+  border-color: var(--joint-purple);
 }
 
-.bottom-nav a {
+/* Posts */
+
+.post-card {
+  background: white;
+  border: 1px solid var(--joint-border);
+  border-radius: 18px;
+  padding: 17px;
+  margin-bottom: 19px;
   min-width: 0;
-  text-align: center;
+  overflow-wrap: anywhere;
+  box-shadow: 0 4px 18px #30204a08;
 }
 
-.hero .btn {
-  margin: 8px 8px 0 0;
+.post-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  min-width: 0;
+}
+
+.post-avatar img,
+.organization-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-author {
+  flex: 1;
+  min-width: 0;
+}
+
+.post-author-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.post-author-meta {
+  color: var(--joint-muted);
+  font-size: .84rem;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e5f1ff;
+  color: #2369bf;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  font-size: .75rem;
+}
+
+.post-menu {
+  border: 0;
+  background: transparent;
+  color: var(--joint-muted);
+  font-size: 1.3rem;
+  padding: 4px 8px;
+}
+
+.post-text {
+  line-height: 1.8;
+  margin: 16px 0;
+  overflow-wrap: anywhere;
+}
+
+.post-category {
+  display: inline-flex;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: var(--joint-purple-light);
+  color: var(--joint-purple-dark);
+  font-weight: 700;
+  font-size: .8rem;
+  margin-top: 13px;
+}
+
+.post-media {
+  display: block;
+  width: 100%;
+  max-height: 440px;
+  object-fit: cover;
+  border-radius: 14px;
+  background: #f1edf7;
+  margin: 12px 0;
+}
+
+.post-video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 14px;
+  background: #171421;
+  margin: 12px 0;
+}
+
+.post-link-card {
+  display: block;
+  text-decoration: none;
+  color: var(--joint-purple-dark);
+  padding: 15px;
+  border: 1px solid var(--joint-border);
+  border-radius: 12px;
+  background: #fcfaff;
+  margin: 12px 0;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.post-link-card small {
+  display: block;
+  color: var(--joint-muted);
+  font-weight: 400;
+  margin-top: 5px;
+}
+
+.post-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--joint-muted);
+  font-size: .88rem;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0ebf6;
+}
+
+.post-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.post-action {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--joint-muted);
+  padding: 11px 3px;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: .85rem;
+}
+
+.post-action:hover {
+  background: var(--joint-purple-light);
+}
+
+.post-action.liked,
+.post-action.following {
+  color: var(--joint-purple);
+  background: var(--joint-purple-light);
+}
+
+.post-comments {
+  border-top: 1px solid #f0ebf6;
+  margin-top: 9px;
+  padding-top: 12px;
+}
+
+.comment-list {
+  margin-bottom: 12px;
+}
+
+.comment-item {
+  background: #f7f4fc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.comment-item strong {
+  display: block;
+  font-size: .9rem;
+  margin-bottom: 3px;
+}
+
+.comment-form {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.comment-form input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--joint-border);
+  border-radius: 10px;
+  padding: 11px;
+}
+
+.comment-form button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 13px;
+  background: var(--joint-purple);
+  color: white;
+  font-weight: 700;
+}
+
+/* Organization / class promotion */
+
+.promo-banner {
+  border-radius: 14px;
+  padding: 23px;
+  color: white;
+  background: linear-gradient(135deg, #382075, #6938d1, #a278f4);
+  margin: 13px 0;
+}
+
+.promo-banner h3 {
+  color: white;
+  font-size: clamp(21px, 5vw, 29px);
+  line-height: 1.35;
+  margin: 10px 0;
+}
+
+.promo-banner p {
+  line-height: 1.7;
+}
+
+.promo-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.promo-logo-row .organization-logo {
+  background: white;
+  color: var(--joint-purple);
+}
+
+.promo-banner .btn {
+  display: inline-flex;
+  background: white;
+  color: var(--joint-purple-dark);
+  text-decoration: none;
+  margin-top: 8px;
+}
+
+.promo-banner .btn.secondary {
+  background: transparent;
+  border: 1px solid #ffffff99;
+  color: white;
+}
+
+.meeting-info {
+  background: #f7f3ff;
+  border: 1px solid var(--joint-border);
+  border-radius: 13px;
+  padding: 15px;
+  margin: 12px 0;
+}
+
+.meeting-info p {
+  line-height: 1.7;
+  margin: 7px 0;
+}
+
+/* Sidebar */
+
+.sidebar-action {
+  display: block;
+  text-decoration: none;
+  color: var(--joint-text);
+  padding: 12px 0;
+  border-bottom: 1px solid #f0ebf6;
+  line-height: 1.5;
+}
+
+.sidebar-action:last-child {
+  border-bottom: 0;
+}
+
+.sidebar-action strong {
+  display: block;
+  color: var(--joint-purple-dark);
+}
+
+.sidebar-action small {
+  color: var(--joint-muted);
+}
+
+.trend-tag {
+  display: inline-flex;
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: #f1eaff;
+  color: var(--joint-purple-dark);
+  margin: 4px;
+  font-size: .85rem;
+}
+
+/* Notices and empty state */
+
+.feed-notice {
+  padding: 13px 15px;
+  border-radius: 12px;
+  background: #fff5d9;
+  color: #755719;
+  line-height: 1.7;
+  font-size: .9rem;
+  margin-bottom: 17px;
+}
+
+.feed-empty {
+  background: white;
+  text-align: center;
+  border: 1px dashed var(--joint-border);
+  border-radius: 15px;
+  padding: 28px 18px;
+  color: var(--joint-muted);
+  line-height: 1.8;
+}
+
+.feed-empty[hidden] {
+  display: none !important;
+}
+
+.load-more {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: white;
+  color: var(--joint-purple);
+  border: 1px solid var(--joint-border);
+  border-radius: 12px;
+  font-weight: 800;
+  margin: 15px 0 25px;
+}
+
+@media (min-width: 900px) {
+  .feed-layout {
+    grid-template-columns: minmax(0, 1fr) 290px;
+  }
+
+  .feed-sidebar {
+    display: block;
+    position: sticky;
+    top: 15px;
+  }
+
+  .composer-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 600px) {
-  .main-nav {
+  .feed-page {
+    padding: 14px 11px 110px;
+  }
+
+  .feed-welcome {
+    padding: 22px 18px;
+    border-radius: 19px;
+  }
+
+  .composer,
+  .post-card,
+  .feed-panel {
+    padding: 14px;
+    border-radius: 15px;
+  }
+
+  .post-actions {
+    gap: 2px;
+  }
+
+  .post-action {
+    font-size: .76rem;
+    padding: 10px 1px;
+  }
+
+  .comment-form {
+    flex-wrap: wrap;
+  }
+
+  .comment-form input {
+    flex-basis: 100%;
+  }
+
+  .comment-form button {
     width: 100%;
-    max-width: 100%;
   }
 
-  .bottom-nav {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+  .welcome-actions {
+    flex-direction: column;
   }
 
-  .bottom-nav a {
-    font-size: 12px;
+  .welcome-actions .btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>
@@ -62,13 +694,13 @@
 
 <body>
 
-<!-- TOP HEADER -->
+<!-- TOP NAVIGATION -->
+
 <header class="topbar">
   <div class="topbar-inner">
 
     <a class="brand" href="index.html">
-      <span class="brand-mark">J</span>
-      JOINT
+      <span class="brand-mark">J</span> JOINT
     </a>
 
     <nav class="main-nav" aria-label="Main navigation">
@@ -87,188 +719,299 @@
       <a class="btn secondary desktop-only" href="host-meeting.html">
         ＋ Host
       </a>
-      <a class="avatar" href="profile.html" title="Your profile">
-        JM
-      </a>
+      <div class="avatar" title="Your profile">JM</div>
     </div>
 
   </div>
 </header>
 
-<!-- BOTTOM MOBILE NAVIGATION -->
-<nav class="bottom-nav" aria-label="Mobile navigation">
+<!-- MOBILE NAVIGATION -->
 
-  <a href="index.html" class="active" aria-current="page">
-    <span>⌂</span>
-    Home
+<nav class="bottom-nav" aria-label="Mobile navigation">
+  <a href="index.html" class="active">
+    <span>⌂</span>Home
   </a>
 
   <a href="meetings.html">
-    <span>▣</span>
-    Meetings
+    <span>▣</span>Meetings
   </a>
 
   <a href="classes.html">
-    <span>▤</span>
-    Classes
+    <span>▤</span>Classes
   </a>
 
   <a href="friends.html">
-    <span>♧</span>
-    Friends
+    <span>♧</span>Friends
   </a>
 
   <a href="chat.html">
-    <span>✉</span>
-    Chat
+    <span>✉</span>Chat
   </a>
-
 </nav>
 
-<!-- MAIN HOME PAGE -->
-<main class="page">
+<main class="feed-page">
 
-  <!-- HERO SECTION -->
-  <section class="hero">
+  <!-- WELCOME -->
 
-    <div>
-      <span class="pill" style="background:#ffffff25;color:white">
-        YOUR SPACE TO LEARN &amp; CONNECT
-      </span>
+  <section class="feed-welcome">
 
-      <h1>
-        Learn better.<br>
-        Grow together.
-      </h1>
+    <div class="eyebrow">
+      YOUR SPACE TO LEARN & CONNECT
+    </div>
 
-      <p>
-        Host meetings, teach a class, learn new skills, and build your
-        community — all in one place.
-      </p>
+    <h1>Learn better.<br>Grow together.</h1>
 
-      <a class="btn" href="host-meeting.html">
-        ＋ Host a meeting
+    <p>
+      Discover students, meet teachers, explore schools,
+      find training opportunities, and join learning communities
+      from one place.
+    </p>
+
+    <div class="welcome-actions">
+      <a class="btn" href="host-class.html">
+        ＋ Host a class
       </a>
 
-      <a class="btn secondary" href="join-meeting.html">
-        Join a meeting
+      <a class="btn secondary" href="host-meeting.html">
+        Host a meeting
       </a>
     </div>
 
-    <div class="hero-art" aria-hidden="true">
-      🎓💬
-    </div>
-
   </section>
 
-  <!-- LEARNING SPACE -->
-  <div class="section-title">
-    <h2>Your learning space</h2>
-    <span class="muted">Welcome back, learner!</span>
-  </div>
+  <div class="feed-layout">
 
-  <section class="grid four">
+    <!-- MAIN FEED -->
 
-    <a class="card" href="meetings.html">
-      <div class="icon-box">🎥</div>
-      <h3>Meetings</h3>
-      <p>Start a video, audio, study, or project room.</p>
-      <span class="pill">Open meetings →</span>
-    </a>
+    <section class="feed-main" aria-label="Community feed">
 
-    <a class="card" href="classes.html">
-      <div class="icon-box">📚</div>
-      <h3>Classes</h3>
-      <p>Teach or learn through structured lessons.</p>
-      <span class="pill">Explore classes →</span>
-    </a>
+      <!-- CREATE POST -->
 
-    <a class="card" href="my-learning.html">
-      <div class="icon-box">🎓</div>
-      <h3>My Learning</h3>
-      <p>Continue your courses and track your learning progress.</p>
-      <span class="pill">Continue learning →</span>
-    </a>
+      <section class="composer">
 
-    <a class="card" href="friends.html">
-      <div class="icon-box">🤝</div>
-      <h3>Friends</h3>
-      <p>Find learners and people with shared interests.</p>
-      <span class="pill">Meet people →</span>
-    </a>
+        <div class="composer-top">
 
-  </section>
+          <div class="composer-avatar">JM</div>
 
-  <!-- COMMUNITY TIMELINE -->
-  <div class="section-title">
-    <h2>Community timeline</h2>
-  </div>
+          <div class="composer-heading">
+            <strong>Share with JOINT</strong>
+            <small>
+              Share an idea, achievement, question or opportunity.
+            </small>
+          </div>
 
-  <section class="grid">
-    <a class="card" href="timeline.html">
-      <div class="icon-box">✨</div>
-      <h3>Share and discover</h3>
-      <p>
-        Share progress, ask questions, showcase projects, and celebrate
-        achievements with the JOINT community.
-      </p>
-      <span class="pill">View timeline →</span>
-    </a>
+        </div>
 
-    <a class="card" href="chat.html">
-      <div class="icon-box">💬</div>
-      <h3>Chat with learners</h3>
-      <p>
-        Connect with friends and continue conversations about your
-        learning and projects.
-      </p>
-      <span class="pill">Open messages →</span>
-    </a>
-  </section>
+        <form id="create-post-form">
 
-  <!-- QUICK ACTIONS -->
-  <div class="section-title">
-    <h2>Quick actions</h2>
-  </div>
+          <label for="post-text" class="sr-only">
+            What would you like to share?
+          </label>
 
-  <section class="grid three">
+          <textarea
+            id="post-text"
+            maxlength="3000"
+            placeholder="What would you like to share with the community?"
+            required
+          ></textarea>
 
-    <div class="card">
-      <div class="icon-box">🎙️</div>
-      <h3>Host a learning room</h3>
-      <p>
-        Bring your group together for study sessions, discussions,
-        and collaborative projects.
-      </p>
-      <a class="btn" href="host-meeting.html">Create room</a>
-    </div>
+          <div class="composer-fields">
 
-    <div class="card">
-      <div class="icon-box">🧑‍🏫</div>
-      <h3>Create a class</h3>
-      <p>
-        Build structured courses with lessons, video embeds,
-        learning resources, quizzes, and assignments.
-      </p>
-      <a class="btn secondary" href="host-class.html">Host a class</a>
-    </div>
+            <label>
+              Post type
 
-    <div class="card">
-      <div class="icon-box">⚙️</div>
-      <h3>Manage your account</h3>
-      <p>
-        Manage your profile, personal information, and account preferences.
-      </p>
-      <a class="btn secondary" href="settings.html">Open settings</a>
-    </div>
+              <select id="post-type">
+                <option value="student">Student post</option>
+                <option value="teacher">Individual teacher</option>
+                <option value="organization">School / Organization</option>
+                <option value="meeting">Public meeting</option>
+                <option value="education">Learning / Tutorial</option>
+              </select>
+            </label>
 
-  </section>
+            <label>
+              Media type
 
-  <!-- DEVELOPMENT NOTICE -->
-  <div class="notice" style="margin-top:22px">
-    This is the JOINT front-end starter. Supabase, secure course storage,
-    payments, email notifications, and live meeting services still need
-    to be connected.
+              <select id="media-type">
+                <option value="none">Text only</option>
+                <option value="image">Image URL</option>
+                <option value="youtube">YouTube video URL</option>
+              </select>
+            </label>
+
+            <label>
+              Image or video URL (optional)
+
+              <input
+                type="url"
+                id="media-url"
+                placeholder="https://..."
+              >
+            </label>
+
+            <label>
+              Class, meeting or website link (optional)
+
+              <input
+                type="url"
+                id="action-url"
+                placeholder="https://..."
+              >
+            </label>
+
+          </div>
+
+          <p class="composer-note">
+            Demo mode: posts you create are saved in this browser only.
+            Do not include private information or sensitive documents.
+            Only share media you have permission to publish.
+          </p>
+
+          <div class="composer-actions">
+
+            <span class="muted" id="character-count">
+              0 / 3000 characters
+            </span>
+
+            <button type="submit" class="btn">
+              Publish post
+            </button>
+
+          </div>
+
+        </form>
+
+      </section>
+
+      <!-- FILTERS -->
+
+      <div class="feed-section-heading">
+        <h2>Community feed</h2>
+      </div>
+
+      <div class="feed-filters" id="feed-filters">
+
+        <button class="feed-filter active" data-filter="all" type="button">
+          For You
+        </button>
+
+        <button class="feed-filter" data-filter="following" type="button">
+          Following
+        </button>
+
+        <button class="feed-filter" data-filter="student" type="button">
+          Students
+        </button>
+
+        <button class="feed-filter" data-filter="teacher" type="button">
+          Teachers
+        </button>
+
+        <button class="feed-filter" data-filter="organization" type="button">
+          Schools
+        </button>
+
+        <button class="feed-filter" data-filter="meeting" type="button">
+          Meetings
+        </button>
+
+        <button class="feed-filter" data-filter="education" type="button">
+          Learning
+        </button>
+
+        <button class="feed-filter" data-filter="advert" type="button">
+          Adverts
+        </button>
+
+      </div>
+
+      <div class="feed-notice">
+        <strong>Preview:</strong>
+        Example posts help demonstrate how the feed works.
+        Posts, likes, comments and follows are currently stored locally
+        and are not visible to other users.
+      </div>
+
+      <div id="feed-list"></div>
+
+      <div id="feed-empty" class="feed-empty" hidden>
+        <h3>No posts found</h3>
+        <p>
+          Try another category or follow more creators to explore
+          their posts.
+        </p>
+      </div>
+
+      <button id="load-more" class="load-more" type="button">
+        Show more posts
+      </button>
+
+    </section>
+
+    <!-- DESKTOP SIDEBAR -->
+
+    <aside class="feed-sidebar">
+
+      <section class="feed-panel">
+
+        <div class="feed-section-heading">
+          <h2>Quick access</h2>
+        </div>
+
+        <a class="sidebar-action" href="classes.html">
+          <strong>📚 Explore classes</strong>
+          <small>Discover courses and training.</small>
+        </a>
+
+        <a class="sidebar-action" href="my-learning.html">
+          <strong>🎓 My Learning</strong>
+          <small>Continue your enrolled courses.</small>
+        </a>
+
+        <a class="sidebar-action" href="meetings.html">
+          <strong>🎥 Meetings</strong>
+          <small>Find meetings and study groups.</small>
+        </a>
+
+        <a class="sidebar-action" href="friends.html">
+          <strong>🤝 Find people</strong>
+          <small>Connect with other learners.</small>
+        </a>
+
+      </section>
+
+      <section class="feed-panel">
+
+        <div class="feed-section-heading">
+          <h2>Explore topics</h2>
+        </div>
+
+        <span class="trend-tag">#WebDesign</span>
+        <span class="trend-tag">#GraphicDesign</span>
+        <span class="trend-tag">#Business</span>
+        <span class="trend-tag">#Technology</span>
+        <span class="trend-tag">#Training</span>
+        <span class="trend-tag">#StudyGroups</span>
+
+      </section>
+
+      <section class="feed-panel">
+
+        <h3>Build your learning community</h3>
+
+        <p class="muted" style="line-height:1.7">
+          Teachers can publish courses, schools can introduce their
+          training programmes, and students can share their progress.
+        </p>
+
+        <a class="btn" href="host-class.html">
+          Start hosting
+        </a>
+
+      </section>
+
+    </aside>
+
   </div>
 
 </main>
@@ -278,6 +1021,1261 @@
 </footer>
 
 <script src="navigation.js"></script>
+
+<script>
+(function () {
+  "use strict";
+
+  const POSTS_KEY = "joint_social_posts_demo_v1";
+  const LIKES_KEY = "joint_social_likes_demo_v1";
+  const FOLLOWS_KEY = "joint_social_follows_demo_v1";
+  const COMMENTS_KEY = "joint_social_comments_demo_v1";
+
+  const PAGE_SIZE = 8;
+
+  const $ = function (id) {
+    return document.getElementById(id);
+  };
+
+  let activeFilter = "all";
+  let visibleCount = PAGE_SIZE;
+
+  const currentUser = {
+    id: "joint-demo-user",
+    name: "You",
+    initials: "JM"
+  };
+
+  /*
+   * These are demonstration posts.
+   * Names and organizations are illustrative, not verified accounts.
+   */
+
+  const samplePosts = [
+
+    {
+      id: "demo-student-1",
+      authorId: "demo-student-ada",
+      author: "Ada Learner",
+      initials: "AL",
+      role: "Student",
+      type: "student",
+      time: "Sample post",
+      text:
+        "Today I completed my first website layout while learning HTML and CSS. " +
+        "I'm excited to keep improving. What skill are you learning this week?",
+      category: "Student progress",
+      mediaType: "none",
+      mediaUrl: "",
+      actionUrl: "",
+      actionLabel: "View profile",
+      likes: 18,
+      comments: [
+        {
+          author: "Sample learner",
+          text: "Congratulations! Keep going."
+        }
+      ]
+    },
+
+    {
+      id: "demo-teacher-1",
+      authorId: "demo-teacher-design",
+      author: "Creative Skills Studio",
+      initials: "CS",
+      role: "Individual teacher",
+      type: "teacher",
+      time: "Sample post",
+      text:
+        "Want to learn graphic design from the beginning? " +
+        "This introductory training covers layout, colour, typography " +
+        "and practical design exercises.",
+      category: "Creative skills",
+      mediaType: "none",
+      mediaUrl: "",
+      actionUrl: "classes.html",
+      actionLabel: "Explore classes",
+      likes: 42,
+      comments: []
+    },
+
+    {
+      id: "demo-school-1",
+      authorId: "demo-organization-tech",
+      author: "Future Skills Academy",
+      initials: "FS",
+      role: "School / Organization",
+      type: "organization",
+      time: "Sample advertisement",
+      text:
+        "Build practical digital skills with structured learning, " +
+        "guided exercises and project-based training. Explore the " +
+        "available learning opportunities on JOINT.",
+      category: "Training advertisement",
+      mediaType: "none",
+      mediaUrl: "",
+      actionUrl: "classes.html",
+      actionLabel: "Explore courses",
+      advert: true,
+      likes: 87,
+      comments: []
+    },
+
+    {
+      id: "demo-meeting-1",
+      authorId: "demo-meeting-host",
+      author: "Community Study Group",
+      initials: "SG",
+      role: "Meeting host",
+      type: "meeting",
+      time: "Sample meeting",
+      text:
+        "Join a community discussion about learning technology, " +
+        "building projects and sharing ideas with other learners.",
+      category: "Public meeting",
+      mediaType: "none",
+      mediaUrl: "",
+      actionUrl: "meetings.html",
+      actionLabel: "Explore meetings",
+      likes: 26,
+      comments: []
+    },
+
+    {
+      id: "demo-learning-1",
+      authorId: "demo-educator",
+      author: "Learning Corner",
+      initials: "LC",
+      role: "Education creator",
+      type: "education",
+      time: "Sample post",
+      text:
+        "Learning tip: divide a difficult skill into smaller tasks. " +
+        "Practise one part at a time, build a small project, and review " +
+        "what you learned before moving on.",
+      category: "Learning tips",
+      mediaType: "none",
+      mediaUrl: "",
+      actionUrl: "classes.html",
+      actionLabel: "Find a class",
+      likes: 35,
+      comments: []
+    },
+
+    {
+      id: "demo-school-2",
+      authorId: "demo-organization-business",
+      author: "Business Learning Centre",
+      initials: "BL",
+      role: "School / Organization",
+      type: "organization",
+      time: "Sample advertisement",
+      text:
+        "Interested in entrepreneurship? Explore learning about " +
+        "customer service, planning, budgeting and digital business tools.",
+      category: "Business training",
+      mediaType: "none",
+      mediaUrl: "",
+      actionUrl: "classes.html",
+      actionLabel: "View training",
+      advert: true,
+      likes: 51,
+      comments: []
+    },
+
+    {
+      id: "demo-student-2",
+      authorId: "demo-student-lee",
+      author: "Lee Projects",
+      initials: "LP",
+      role: "Student",
+      type: "student",
+      time: "Sample post",
+      text:
+        "I am looking for other learners interested in building " +
+        "projects together. Share what you are working on and let's learn!",
+      category: "Community",
+      mediaType: "none",
+      mediaUrl: "",
+      actionUrl: "friends.html",
+      actionLabel: "Find people",
+      likes: 12,
+      comments: []
+    },
+
+    {
+      id: "demo-meeting-2",
+      authorId: "demo-public-lecture",
+      author: "Open Learning Community",
+      initials: "OL",
+      role: "Meeting host",
+      type: "meeting",
+      time: "Sample meeting",
+      text:
+        "Public learning discussion: share questions, discuss useful " +
+        "resources and exchange ideas with other members of the community.",
+      category: "Learning discussion",
+      mediaType: "none",
+      mediaUrl: "",
+      actionUrl: "meetings.html",
+      actionLabel: "View meetings",
+      likes: 19,
+      comments: []
+    }
+
+  ];
+
+  function read(key, fallback) {
+    try {
+      const value = JSON.parse(
+        localStorage.getItem(key) || "null"
+      );
+
+      return value === null ? fallback : value;
+
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function write(key, value) {
+    try {
+      localStorage.setItem(
+        key,
+        JSON.stringify(value)
+      );
+
+      return true;
+
+    } catch (error) {
+      alert(
+        "Your browser could not save this change. " +
+        "Check your browser storage settings."
+      );
+
+      return false;
+    }
+  }
+
+  function makeElement(tag, text, className) {
+    const element = document.createElement(tag);
+
+    if (text !== undefined && text !== null) {
+      element.textContent = String(text);
+    }
+
+    if (className) {
+      element.className = className;
+    }
+
+    return element;
+  }
+
+  function safeExternalUrl(value) {
+    if (!value) {
+      return "";
+    }
+
+    try {
+      const url = new URL(value);
+
+      if (
+        url.protocol !== "https:" &&
+        url.protocol !== "http:"
+      ) {
+        return "";
+      }
+
+      return url.href;
+
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function getUserPosts() {
+    const posts = read(POSTS_KEY, []);
+
+    return Array.isArray(posts)
+      ? posts.filter(function (post) {
+          return post &&
+            post.id &&
+            post.authorId &&
+            post.text;
+        })
+      : [];
+  }
+
+  function getPosts() {
+    /*
+     * User-created posts appear before the sample posts.
+     */
+    return [
+      ...getUserPosts(),
+      ...samplePosts
+    ];
+  }
+
+  function getLikes() {
+    const value = read(LIKES_KEY, []);
+
+    return Array.isArray(value) ? value : [];
+  }
+
+  function getFollows() {
+    const value = read(FOLLOWS_KEY, []);
+
+    return Array.isArray(value) ? value : [];
+  }
+
+  function getComments() {
+    const value = read(COMMENTS_KEY, {});
+
+    return value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+      ? value
+      : {};
+  }
+
+  function isLiked(postId) {
+    return getLikes().includes(postId);
+  }
+
+  function isFollowing(authorId) {
+    return getFollows().includes(authorId);
+  }
+
+  function getPostComments(post) {
+    const allComments = getComments();
+
+    const savedComments = Array.isArray(
+      allComments[post.id]
+    )
+      ? allComments[post.id]
+      : [];
+
+    const originalComments = Array.isArray(post.comments)
+      ? post.comments
+      : [];
+
+    return [
+      ...originalComments,
+      ...savedComments
+    ];
+  }
+
+  function getLikeCount(post) {
+    const liked = isLiked(post.id);
+
+    return Math.max(
+      0,
+      Number(post.likes || 0) + (liked ? 1 : 0)
+    );
+  }
+
+  function postMatchesFilter(post) {
+    if (activeFilter === "all") {
+      return true;
+    }
+
+    if (activeFilter === "following") {
+      return isFollowing(post.authorId);
+    }
+
+    if (activeFilter === "advert") {
+      return Boolean(post.advert);
+    }
+
+    return post.type === activeFilter;
+  }
+
+  function createAvatar(post) {
+    const avatar = makeElement(
+      "div",
+      post.initials || "J",
+      "post-avatar"
+    );
+
+    avatar.setAttribute("aria-hidden", "true");
+
+    return avatar;
+  }
+
+  function renderPostMedia(post, article) {
+    const mediaUrl = safeExternalUrl(post.mediaUrl);
+
+    if (!mediaUrl) {
+      return;
+    }
+
+    if (post.mediaType === "image") {
+      const image = document.createElement("img");
+
+      image.className = "post-media";
+      image.src = mediaUrl;
+      image.alt = "Image shared in this post";
+      image.loading = "lazy";
+
+      image.addEventListener("error", function () {
+        image.replaceWith(
+          makeElement(
+            "p",
+            "This image could not be displayed.",
+            "muted"
+          )
+        );
+      });
+
+      article.appendChild(image);
+    }
+
+    if (post.mediaType === "youtube") {
+      const embed = youtubeEmbed(mediaUrl);
+
+      if (embed) {
+        const frame = document.createElement("iframe");
+
+        frame.className = "post-video";
+        frame.src = embed;
+        frame.title = "Shared educational video";
+        frame.loading = "lazy";
+
+        frame.allow =
+          "accelerometer; autoplay; clipboard-write; " +
+          "encrypted-media; gyroscope; picture-in-picture; web-share";
+
+        frame.referrerPolicy =
+          "strict-origin-when-cross-origin";
+
+        frame.allowFullscreen = true;
+
+        article.appendChild(frame);
+
+      } else {
+        const link = makeElement(
+          "a",
+          "Watch shared video",
+          "post-link-card"
+        );
+
+        link.href = mediaUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+
+        article.appendChild(link);
+      }
+    }
+  }
+
+  function youtubeEmbed(value) {
+    try {
+      const url = new URL(value);
+
+      let id = "";
+
+      if (url.hostname === "youtu.be") {
+        id = url.pathname.slice(1);
+
+      } else if (
+        [
+          "youtube.com",
+          "www.youtube.com",
+          "m.youtube.com"
+        ].includes(url.hostname)
+      ) {
+        if (url.pathname === "/watch") {
+          id = url.searchParams.get("v") || "";
+
+        } else if (
+          url.pathname.startsWith("/embed/") ||
+          url.pathname.startsWith("/shorts/")
+        ) {
+          id = url.pathname.split("/")[2] || "";
+        }
+      }
+
+      return /^[A-Za-z0-9_-]{11}$/.test(id)
+        ? "https://www.youtube-nocookie.com/embed/" + id
+        : "";
+
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function renderOrganizationBanner(post) {
+    const banner = makeElement(
+      "div",
+      undefined,
+      "promo-banner"
+    );
+
+    const logoRow = makeElement(
+      "div",
+      undefined,
+      "promo-logo-row"
+    );
+
+    const logo = makeElement(
+      "div",
+      post.initials || "ORG",
+      "organization-logo"
+    );
+
+    const name = makeElement(
+      "strong",
+      post.author
+    );
+
+    logoRow.appendChild(logo);
+    logoRow.appendChild(name);
+
+    banner.appendChild(logoRow);
+
+    banner.appendChild(
+      makeElement(
+        "h3",
+        post.category === "Business training"
+          ? "Build practical business skills"
+          : "Discover your next learning opportunity"
+      )
+    );
+
+    banner.appendChild(
+      makeElement(
+        "p",
+        "Explore training opportunities and learning resources " +
+        "on JOINT."
+      )
+    );
+
+    const button = makeElement(
+      "a",
+      post.actionLabel || "Explore courses",
+      "btn"
+    );
+
+    button.href = safeExternalUrl(post.actionUrl)
+      ? post.actionUrl
+      : "classes.html";
+
+    banner.appendChild(button);
+
+    return banner;
+  }
+
+  function renderMeetingCard(post) {
+    const box = makeElement(
+      "div",
+      undefined,
+      "meeting-info"
+    );
+
+    box.appendChild(
+      makeElement("strong", "🎥 Public learning meeting")
+    );
+
+    box.appendChild(
+      makeElement(
+        "p",
+        "Discover meeting information and available joining options."
+      )
+    );
+
+    const button = makeElement(
+      "a",
+      post.actionLabel || "Explore meetings",
+      "btn secondary"
+    );
+
+    button.href = safeExternalUrl(post.actionUrl)
+      ? post.actionUrl
+      : "meetings.html";
+
+    box.appendChild(button);
+
+    return box;
+  }
+
+  function renderPost(post) {
+    const article = makeElement(
+      "article",
+      undefined,
+      "post-card"
+    );
+
+    article.dataset.postId = post.id;
+
+    const header = makeElement(
+      "div",
+      undefined,
+      "post-header"
+    );
+
+    header.appendChild(createAvatar(post));
+
+    const authorBox = makeElement(
+      "div",
+      undefined,
+      "post-author"
+    );
+
+    const authorName = makeElement(
+      "div",
+      undefined,
+      "post-author-name"
+    );
+
+    authorName.appendChild(
+      makeElement("span", post.author)
+    );
+
+    /*
+     * No verification badge is displayed for sample accounts.
+     * Real verification must come from trusted backend data.
+     */
+
+    authorBox.appendChild(authorName);
+
+    authorBox.appendChild(
+      makeElement(
+        "div",
+        post.role + " · " + post.time,
+        "post-author-meta"
+      )
+    );
+
+    header.appendChild(authorBox);
+
+    const menuButton = makeElement(
+      "button",
+      "⋯",
+      "post-menu"
+    );
+
+    menuButton.type = "button";
+    menuButton.setAttribute(
+      "aria-label",
+      "Post options"
+    );
+
+    menuButton.addEventListener("click", function () {
+      if (post.authorId === currentUser.id) {
+        const deletePost = confirm(
+          "Delete this post from this browser?"
+        );
+
+        if (deletePost) {
+          deleteUserPost(post.id);
+        }
+
+      } else {
+        alert(
+          "Post reporting and moderation will be connected " +
+          "to the JOINT backend in a later stage."
+        );
+      }
+    });
+
+    header.appendChild(menuButton);
+
+    article.appendChild(header);
+
+    article.appendChild(
+      makeElement(
+        "span",
+        post.advert
+          ? "Sponsored / Advertisement preview"
+          : post.category || "Community",
+        "post-category"
+      )
+    );
+
+    article.appendChild(
+      makeElement(
+        "p",
+        post.text,
+        "post-text"
+      )
+    );
+
+    if (
+      post.type === "organization" &&
+      post.advert
+    ) {
+      article.appendChild(
+        renderOrganizationBanner(post)
+      );
+    }
+
+    if (post.type === "meeting") {
+      article.appendChild(
+        renderMeetingCard(post)
+      );
+    }
+
+    renderPostMedia(post, article);
+
+    const actionUrl = safeExternalUrl(post.actionUrl);
+
+    if (
+      actionUrl &&
+      post.type !== "organization" &&
+      post.type !== "meeting"
+    ) {
+      const link = makeElement(
+        "a",
+        (post.actionLabel || "Learn more") +
+        " →",
+        "post-link-card"
+      );
+
+      link.href = actionUrl;
+
+      if (/^https?:\/\//i.test(actionUrl) &&
+          !actionUrl.includes(location.host)) {
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+      }
+
+      link.appendChild(
+        makeElement(
+          "small",
+          "Open the related learning resource."
+        )
+      );
+
+      article.appendChild(link);
+    }
+
+    const stats = makeElement(
+      "div",
+      undefined,
+      "post-stats"
+    );
+
+    stats.appendChild(
+      makeElement(
+        "span",
+        "❤️ " + getLikeCount(post) + " likes"
+      )
+    );
+
+    stats.appendChild(
+      makeElement(
+        "span",
+        "💬 " + getPostComments(post).length + " comments"
+      )
+    );
+
+    article.appendChild(stats);
+
+    const actions = makeElement(
+      "div",
+      undefined,
+      "post-actions"
+    );
+
+    const likeButton = makeElement(
+      "button",
+      isLiked(post.id) ? "♥ Liked" : "♡ Like",
+      "post-action" + (
+        isLiked(post.id) ? " liked" : ""
+      )
+    );
+
+    likeButton.type = "button";
+
+    likeButton.addEventListener(
+      "click",
+      function () {
+        toggleLike(post.id);
+      }
+    );
+
+    actions.appendChild(likeButton);
+
+    const commentButton = makeElement(
+      "button",
+      "💬 Comment",
+      "post-action"
+    );
+
+    commentButton.type = "button";
+
+    commentButton.addEventListener(
+      "click",
+      function () {
+        const form = article.querySelector(".comment-form");
+
+        if (form) {
+          form.querySelector("input").focus();
+        }
+      }
+    );
+
+    actions.appendChild(commentButton);
+
+    const shareButton = makeElement(
+      "button",
+      "↗ Share",
+      "post-action"
+    );
+
+    shareButton.type = "button";
+
+    shareButton.addEventListener(
+      "click",
+      function () {
+        sharePost(post);
+      }
+    );
+
+    actions.appendChild(shareButton);
+
+    const followButton = makeElement(
+      "button",
+      isFollowing(post.authorId)
+        ? "Following"
+        : "+ Follow",
+      "post-action" + (
+        isFollowing(post.authorId)
+          ? " following"
+          : ""
+      )
+    );
+
+    followButton.type = "button";
+
+    followButton.disabled =
+      post.authorId === currentUser.id;
+
+    followButton.addEventListener(
+      "click",
+      function () {
+        toggleFollow(post.authorId);
+      }
+    );
+
+    actions.appendChild(followButton);
+
+    article.appendChild(actions);
+
+    const commentSection = makeElement(
+      "section",
+      undefined,
+      "post-comments"
+    );
+
+    const commentList = makeElement(
+      "div",
+      undefined,
+      "comment-list"
+    );
+
+    getPostComments(post).forEach(
+      function (comment) {
+        const item = makeElement(
+          "div",
+          undefined,
+          "comment-item"
+        );
+
+        item.appendChild(
+          makeElement(
+            "strong",
+            comment.author || "JOINT member"
+          )
+        );
+
+        item.appendChild(
+          makeElement(
+            "span",
+            comment.text || ""
+          )
+        );
+
+        commentList.appendChild(item);
+      }
+    );
+
+    commentSection.appendChild(commentList);
+
+    const form = makeElement(
+      "form",
+      undefined,
+      "comment-form"
+    );
+
+    const input = document.createElement("input");
+
+    input.type = "text";
+    input.maxLength = 500;
+    input.placeholder = "Write a comment…";
+    input.setAttribute(
+      "aria-label",
+      "Write a comment"
+    );
+    input.required = true;
+
+    const submit = makeElement(
+      "button",
+      "Send"
+    );
+
+    submit.type = "submit";
+
+    form.appendChild(input);
+    form.appendChild(submit);
+
+    form.addEventListener(
+      "submit",
+      function (event) {
+        event.preventDefault();
+
+        const text = input.value.trim();
+
+        if (!text) {
+          return;
+        }
+
+        addComment(post.id, text);
+      }
+    );
+
+    commentSection.appendChild(form);
+    article.appendChild(commentSection);
+
+    return article;
+  }
+
+  function renderFeed() {
+    const container = $("feed-list");
+
+    container.replaceChildren();
+
+    const filtered = getPosts().filter(
+      postMatchesFilter
+    );
+
+    const visible = filtered.slice(0, visibleCount);
+
+    visible.forEach(function (post) {
+      container.appendChild(renderPost(post));
+    });
+
+    $("feed-empty").hidden = filtered.length > 0;
+
+    $("load-more").hidden =
+      visible.length >= filtered.length;
+
+    $("load-more").textContent =
+      "Show more posts";
+
+    if (activeFilter === "following" && filtered.length === 0) {
+      $("feed-empty").querySelector("p").textContent =
+        "You are not following any creators yet. " +
+        "Choose For You and follow people or organizations.";
+    } else {
+      $("feed-empty").querySelector("p").textContent =
+        "Try another category or follow more creators to explore their posts.";
+    }
+  }
+
+  function toggleLike(postId) {
+    const likes = getLikes();
+
+    const index = likes.indexOf(postId);
+
+    if (index >= 0) {
+      likes.splice(index, 1);
+    } else {
+      likes.push(postId);
+    }
+
+    if (write(LIKES_KEY, likes)) {
+      renderFeed();
+    }
+  }
+
+  function toggleFollow(authorId) {
+    if (authorId === currentUser.id) {
+      return;
+    }
+
+    const follows = getFollows();
+
+    const index = follows.indexOf(authorId);
+
+    if (index >= 0) {
+      follows.splice(index, 1);
+    } else {
+      follows.push(authorId);
+    }
+
+    if (write(FOLLOWS_KEY, follows)) {
+      renderFeed();
+    }
+  }
+
+  function addComment(postId, text) {
+    const allComments = getComments();
+
+    if (!Array.isArray(allComments[postId])) {
+      allComments[postId] = [];
+    }
+
+    allComments[postId].push({
+      author: currentUser.name,
+      text: text,
+      createdAt: new Date().toISOString()
+    });
+
+    if (write(COMMENTS_KEY, allComments)) {
+      renderFeed();
+    }
+  }
+
+  async function sharePost(post) {
+    const shareText =
+      post.author + " on JOINT: " + post.text;
+
+    const shareData = {
+      title: "JOINT community post",
+      text: shareText,
+      url: location.href
+    };
+
+    try {
+      if (
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare(shareData)
+      ) {
+        await navigator.share(shareData);
+
+      } else if (navigator.share) {
+        await navigator.share({
+          title: shareData.title,
+          text: shareText
+        });
+
+      } else if (navigator.clipboard &&
+                 navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(
+          shareText + "\n" + location.href
+        );
+
+        alert("Post text copied. You can now share it.");
+
+      } else {
+        prompt(
+          "Copy this post to share it:",
+          shareText + "\n" + location.href
+        );
+      }
+
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        alert(
+          "Sharing was not completed. Please try again."
+        );
+      }
+    }
+  }
+
+  function deleteUserPost(postId) {
+    const posts = getUserPosts().filter(
+      function (post) {
+        return post.id !== postId;
+      }
+    );
+
+    if (write(POSTS_KEY, posts)) {
+      renderFeed();
+    }
+  }
+
+  function publishPost(event) {
+    event.preventDefault();
+
+    const text = $("post-text").value.trim();
+
+    const type = $("post-type").value;
+    const mediaType = $("media-type").value;
+
+    const mediaUrl = $("media-url").value.trim();
+    const actionUrl = $("action-url").value.trim();
+
+    if (!text) {
+      alert("Please write something before publishing.");
+      return;
+    }
+
+    if (mediaType !== "none" &&
+        mediaUrl &&
+        !safeExternalUrl(mediaUrl)) {
+      alert(
+        "Please enter a valid HTTP or HTTPS media URL."
+      );
+      return;
+    }
+
+    if (actionUrl && !safeExternalUrl(actionUrl)) {
+      alert(
+        "Please enter a valid HTTP or HTTPS link."
+      );
+      return;
+    }
+
+    if (mediaType !== "none" && !mediaUrl) {
+      alert(
+        "Please enter the image or video URL you selected."
+      );
+      return;
+    }
+
+    const typeDetails = {
+      student: {
+        role: "Student",
+        category: "Student post",
+        actionLabel: "View profile"
+      },
+
+      teacher: {
+        role: "Individual teacher",
+        category: "Class announcement",
+        actionLabel: "Explore classes"
+      },
+
+      organization: {
+        role: "School / Organization",
+        category: "Organization announcement",
+        actionLabel: "Explore courses"
+      },
+
+      meeting: {
+        role: "Meeting host",
+        category: "Public meeting",
+        actionLabel: "Explore meetings"
+      },
+
+      education: {
+        role: "Education creator",
+        category: "Learning content",
+        actionLabel: "Find a class"
+      }
+    };
+
+    const details = typeDetails[type] || typeDetails.student;
+
+    const post = {
+      id: "post-" + Date.now() + "-" +
+        Math.random().toString(36).slice(2, 8),
+
+      authorId: currentUser.id,
+      author: currentUser.name,
+      initials: currentUser.initials,
+      role: details.role,
+      type: type,
+      time: "Just now",
+      text: text,
+      category: details.category,
+      mediaType: mediaType,
+      mediaUrl: mediaType === "none" ? "" : mediaUrl,
+      actionUrl: actionUrl,
+      actionLabel: details.actionLabel,
+      likes: 0,
+      comments: [],
+      createdAt: new Date().toISOString()
+    };
+
+    const posts = getUserPosts();
+
+    posts.unshift(post);
+
+    if (!write(POSTS_KEY, posts)) {
+      return;
+    }
+
+    $("create-post-form").reset();
+
+    $("character-count").textContent =
+      "0 / 3000 characters";
+
+    activeFilter = "all";
+    visibleCount = PAGE_SIZE;
+
+    document.querySelectorAll(".feed-filter").forEach(
+      function (button) {
+        button.classList.toggle(
+          "active",
+          button.dataset.filter === "all"
+        );
+      }
+    );
+
+    renderFeed();
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  }
+
+  $("create-post-form").addEventListener(
+    "submit",
+    publishPost
+  );
+
+  $("post-text").addEventListener(
+    "input",
+    function () {
+      $("character-count").textContent =
+        this.value.length + " / 3000 characters";
+    }
+  );
+
+  $("feed-filters").addEventListener(
+    "click",
+    function (event) {
+      const button = event.target.closest(
+        ".feed-filter"
+      );
+
+      if (!button) {
+        return;
+      }
+
+      activeFilter = button.dataset.filter;
+      visibleCount = PAGE_SIZE;
+
+      document.querySelectorAll(".feed-filter").forEach(
+        function (item) {
+          item.classList.toggle(
+            "active",
+            item === button
+          );
+        }
+      );
+
+      renderFeed();
+    }
+  );
+
+  $("load-more").addEventListener(
+    "click",
+    function () {
+      visibleCount += PAGE_SIZE;
+      renderFeed();
+    }
+  );
+
+  renderFeed();
+
+})();
+</script>
 
 </body>
 </html>
