@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Organization Registration — JOINT</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="hosting.css">
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;max-width:100%;overflow-x:hidden}
+.registration-page{width:100%;max-width:900px;margin:auto;padding:24px 16px 110px}
+.registration-card{width:100%;min-width:0;background:#fff;border:1px solid #e9e4f3;border-radius:22px;padding:22px 18px;margin-bottom:20px;box-shadow:0 8px 28px rgba(50,30,90,.04)}
+.registration-card h2{margin-top:0;font-size:22px;overflow-wrap:anywhere}.registration-card p{color:#777486;line-height:1.65}
+.registration-form{display:grid;grid-template-columns:minmax(0,1fr);gap:17px}.registration-field{min-width:0}
+.registration-field label{display:block;font-weight:700;margin-bottom:8px}
+.registration-field input:not([type=checkbox]):not([type=radio]),.registration-field select,.registration-field textarea{display:block;width:100%;max-width:100%;min-width:0;padding:14px;border:1px solid #ded9e8;border-radius:12px;background:#fbfaff;color:#262337;font:inherit;font-size:16px}
+.registration-field textarea{min-height:100px;resize:vertical}.registration-field small{display:block;margin-top:6px;color:#777486;line-height:1.5}
+.registration-field input[type=file]{display:block;width:100%;max-width:100%;min-width:0;min-height:54px;padding:12px;font-size:16px;cursor:pointer;pointer-events:auto;opacity:1;position:relative;z-index:1}
+.registration-check{display:flex;gap:10px;align-items:flex-start;line-height:1.5}.registration-check input{flex:0 0 20px;width:20px;height:20px;margin-top:5px}.registration-check span{min-width:0;overflow-wrap:anywhere}
+.registration-button{display:block;width:100%;max-width:100%;min-height:50px;padding:14px;border:0;border-radius:13px;background:#6938d1;color:white;font:inherit;font-weight:700;text-align:center;text-decoration:none;cursor:pointer;overflow-wrap:anywhere}
+.registration-button.secondary{background:#f0eaff;color:#6938d1;border:1px solid #e0d5ff}
+.registration-note{background:#fff9e9;border:1px solid #f0dfaa;border-radius:14px;padding:15px;color:#72591c;line-height:1.6;overflow-wrap:anywhere;margin-bottom:20px}
+.registration-status{display:none;margin-top:14px;line-height:1.6;overflow-wrap:anywhere;padding:14px;border-radius:12px}
+@media(min-width:650px){.registration-form.two-columns{grid-template-columns:repeat(2,minmax(0,1fr))}.registration-form .full-width{grid-column:1/-1}}
+@media(max-width:600px){.registration-page{padding-left:14px;padding-right:14px}.registration-card{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+<a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a>
+<nav class="main-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="meetings.html">Meetings</a><a href="classes.html">Classes</a><a href="friends.html">Friends</a><a href="chat.html">Chat</a><a href="timeline.html">Timeline</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a><a href="admin.html">Owner Admin</a></nav>
+<div class="top-actions"><a class="avatar" href="profile.html" title="Open your profile" aria-label="Open your profile">JM</a></div></div></header>
+<nav class="bottom-nav" aria-label="Mobile navigation"><a href="index.html"><span>⌂</span>Home</a><a href="meetings.html"><span>▣</span>Meetings</a><a href="classes.html"><span>▤</span>Classes</a><a href="friends.html"><span>♧</span>Friends</a><a href="chat.html"><span>✉</span>Chat</a></nav>
+<main class="registration-page">
+<div class="page-heading"><div class="eyebrow">JOINT ORGANIZATION ACCOUNT</div><h1>Register your organization</h1><p class="subtitle">Create a learning space for your school, training centre, academy, or company. Manage multiple courses and teachers under one organization.</p></div>
+<div class="registration-note"><strong>Before you begin:</strong> You must be authorized to register this organization. Verification requirements depend on your country. Submitting this form does not mean your organization is already verified.</div>
+<form id="organization-form">
+<section class="registration-card"><h2>1. Organization information</h2><p>Enter the official information for your organization.</p><div class="registration-form two-columns">
+<div class="registration-field full-width"><label for="country">Country of registration *</label><select id="country" name="country" required><option value="">Select your country</option><option value="NG">Nigeria</option><option value="GH">Ghana</option><option value="KE">Kenya</option><option value="ZA">South Africa</option><option value="UG">Uganda</option><option value="TZ">Tanzania</option><option value="US">United States</option><option value="GB">United Kingdom</option><option value="CA">Canada</option><option value="IN">India</option><option value="OTHER">Other country</option></select><small>This starter list can be expanded to every country worldwide.</small></div>
+<div class="registration-field full-width" id="other-country-field" hidden><label for="other-country">Enter your country *</label><input id="other-country" name="other_country" placeholder="Country name"></div>
+<div class="registration-field full-width"><label for="organization-name">Official organization name *</label><input id="organization-name" name="organization_name" required maxlength="150" placeholder="e.g. Bright Future Academy"></div>
+<div class="registration-field"><label for="organization-username">Organization username *</label><input id="organization-username" name="organization_username" required maxlength="40" placeholder="e.g. brightfuture"><small>This will help students find your organization.</small></div>
+<div class="registration-field"><label for="organization-type">Organization category *</label><select id="organization-type" name="organization_type" required><option value="">Select category</option><option>School</option><option>College or university</option><option>Skills-acquisition centre</option><option>Training company</option><option>Lecture provider</option><option>Academy</option><option>Vocational institution</option><option>Non-profit learning organization</option><option>Other</option></select></div>
+<div class="registration-field"><label for="registration-type">Legal registration type</label><select id="registration-type" name="registration_type"><option value="">Select if applicable</option><option>Registered company</option><option>Business name</option><option>Registered school or institution</option><option>Non-profit organization</option><option>Government institution</option><option>Unregistered educational group</option><option>Other</option></select></div>
+<div class="registration-field"><label for="registration-number">Official registration number</label><input id="registration-number" name="registration_number" placeholder="Enter number, if applicable"></div>
+<div class="registration-field full-width"><label for="organization-description">About the organization *</label><textarea id="organization-description" name="organization_description" required maxlength="2000" placeholder="Describe what your organization teaches and who it serves."></textarea></div>
+</div></section>
+<section class="registration-card"><h2>2. Organization address and contact</h2><div class="registration-form two-columns">
+<div class="registration-field full-width"><label for="address">Street address *</label><input id="address" name="address" required autocomplete="street-address" placeholder="Official or operating address"></div>
+<div class="registration-field"><label for="city">City or town *</label><input id="city" name="city" required autocomplete="address-level2"></div>
+<div class="registration-field"><label for="region">State, province, or region *</label><input id="region" name="region" required autocomplete="address-level1"></div>
+<div class="registration-field"><label for="postal-code">Postal code</label><input id="postal-code" name="postal_code" autocomplete="postal-code"></div>
+<div class="registration-field"><label for="organization-email">Official email *</label><input id="organization-email" name="organization_email" type="email" required autocomplete="email" placeholder="office@example.com"></div>
+<div class="registration-field full-width"><label for="organization-phone">Official telephone *</label><input id="organization-phone" name="organization_phone" type="tel" required autocomplete="tel" placeholder="Include country code"></div>
+</div></section>
+<section class="registration-card"><h2>3. Authorized representative</h2><p>The person completing this registration must be authorized to act on behalf of the organization.</p><div class="registration-form two-columns">
+<div class="registration-field"><label for="representative-name">Full legal name *</label><input id="representative-name" name="representative_name" required autocomplete="name"></div>
+<div class="registration-field"><label for="representative-position">Position or role *</label><input id="representative-position" name="representative_position" required placeholder="e.g. Director or Principal"></div>
+<div class="registration-field"><label for="representative-email">Personal work email *</label><input id="representative-email" name="representative_email" type="email" required></div>
+<div class="registration-field"><label for="representative-phone">Contact telephone *</label><input id="representative-phone" name="representative_phone" type="tel" required></div>
+<div class="registration-field full-width"><label for="representative-id-type">Identity document type *</label><select id="representative-id-type" name="representative_id_type" required><option value="">Select document type</option><option>National identity card</option><option>International passport</option><option>Driver's licence</option><option>Other government-issued ID</option></select></div>
+<div class="registration-field full-width"><label for="representative-id">Identity document file</label><input id="representative-id" name="representative_id" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"><small>File selection is a demonstration only. Secure document upload and verification will require backend integration.</small></div>
+</div></section>
+<section class="registration-card"><h2>4. Organization documents</h2><p>The documents accepted depend on the selected country, organization type, and applicable laws.</p><div class="registration-form">
+<div class="registration-field"><label for="document-type">Registration document type</label><select id="document-type" name="document_type"><option value="">Select document type</option></select><small id="document-guidance">Select your country first to view suggested document types.</small></div>
+<div class="registration-field"><label for="organization-document">Registration document file</label><input id="organization-document" name="organization_document" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"></div>
+<div class="registration-field"><label for="authorization-document">Proof of authorization (optional)</label><input id="authorization-document" name="authorization_document" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"></div>
+<div class="registration-field"><label for="website">Organization website (optional)</label><input id="website" name="website" type="url" placeholder="https://example.com"></div>
+</div></section>
+<section class="registration-card"><h2>5. Teaching and management</h2><p>Organization accounts are designed to support multiple classes, courses, teachers, and administrators.</p><div class="registration-form">
+<div class="registration-field"><label for="expected-teachers">Expected number of teachers</label><select id="expected-teachers" name="expected_teachers"><option>1</option><option>2–5</option><option>6–20</option><option>21–50</option><option>More than 50</option></select></div>
+<div class="registration-field"><label for="expected-classes">Expected number of classes</label><select id="expected-classes" name="expected_classes"><option>1–5</option><option>6–20</option><option>21–50</option><option>More than 50</option></select></div>
+<label class="registration-check"><input type="checkbox" name="accept_responsibility" required><span>I confirm that I am authorized to submit this information and that it is accurate to the best of my knowledge.</span></label>
+<button class="registration-button" type="submit">Save organization registration</button><a class="registration-button secondary" href="host-class.html">← Back to hosting options</a><div id="registration-status" class="registration-status" role="status" aria-live="polite"></div>
+</div></section>
+</form></main>
+<footer class="footer">JOINT · Learn, connect, and grow together</footer>
+<script src="navigation.js"></script>
+<script>
+(function(){
+"use strict";
+const country=document.getElementById("country");
+const otherCountryField=document.getElementById("other-country-field");
+const otherCountry=document.getElementById("other-country");
+const documentType=document.getElementById("document-type");
+const guidance=document.getElementById("document-guidance");
+const form=document.getElementById("organization-form");
+const status=document.getElementById("registration-status");
+const documents={
+NG:["CAC Certificate of Registration","CAC Business Name Registration","School or Institution Approval","Other Official Registration Document"],
+GH:["Company Registration Certificate","Business Registration Certificate","Educational Institution Approval","Other Official Registration Document"],
+KE:["Company Registration Certificate","Business Registration Certificate","Educational Institution Approval","Other Official Registration Document"],
+ZA:["Company Registration Certificate","Business Registration Certificate","Educational Institution Approval","Other Official Registration Document"],
+UG:["Company or Business Registration","Educational Institution Approval","Other Official Registration Document"],
+TZ:["Company or Business Registration","Educational Institution Approval","Other Official Registration Document"],
+US:["State Business Registration","Nonprofit Registration","Educational Institution Approval","Other Official Registration Document"],
+GB:["Company Registration Certificate","Charity Registration","Educational Institution Approval","Other Official Registration Document"],
+CA:["Federal or Provincial Business Registration","Nonprofit Registration","Educational Institution Approval","Other Official Registration Document"],
+IN:["Company or Business Registration","Trust or Society Registration","Educational Institution Approval","Other Official Registration Document"],
+OTHER:["Government-Issued Organization Registration","Educational Institution Authorization","Other Official Registration Document"]
+};
+function updateCountryFields(){
+const selected=country.value;
+otherCountryField.hidden=selected!=="OTHER";
+otherCountry.required=selected==="OTHER";
+documentType.innerHTML='<option value="">Select document type</option>';
+if(!selected){guidance.textContent="Select your country first to view suggested document types.";return;}
+(documents[selected]||documents.OTHER).forEach(function(label){
+const option=document.createElement("option");option.value=label;option.textContent=label;documentType.appendChild(option);
+});
+guidance.textContent="Choose the document applicable to your organization. Requirements depend on your country and organization type.";
+}
+country.addEventListener("change",updateCountryFields);
+updateCountryFields();
+
+["representative-id","organization-document","authorization-document"].forEach(function(id){
+const input=document.getElementById(id);
+input.addEventListener("change",function(){
+const file=input.files&&input.files[0];if(!file)return;
+const allowed=["image/jpeg","image/png","image/webp","application/pdf"];
+if(!allowed.includes(file.type)){input.value="";showStatus("Please choose a JPG, PNG, WebP, or PDF file.",false);return;}
+if(file.size>10*1024*1024){input.value="";showStatus("That file is larger than 10 MB. Please choose a smaller file.",false);return;}
+showStatus("Selected file: "+file.name+". It is selected on this device but has not been uploaded to JOINT.",true);
+});
+});
+function showStatus(message,success){
+status.style.display="block";status.style.color=success?"#237547":"#b42318";status.style.background=success?"#eaf8ef":"#fff0f0";status.textContent=message;
+}
+form.addEventListener("submit",function(event){
+event.preventDefault();if(!form.reportValidity())return;
+const registration={
+country:country.value==="OTHER"?otherCountry.value.trim():country.options[country.selectedIndex].text,
+organizationName:document.getElementById("organization-name").value.trim(),
+organizationUsername:document.getElementById("organization-username").value.trim(),
+organizationType:document.getElementById("organization-type").value,
+registrationType:document.getElementById("registration-type").value,
+registrationNumber:document.getElementById("registration-number").value.trim(),
+description:document.getElementById("organization-description").value.trim(),
+address:document.getElementById("address").value.trim(),city:document.getElementById("city").value.trim(),
+region:document.getElementById("region").value.trim(),postalCode:document.getElementById("postal-code").value.trim(),
+organizationEmail:document.getElementById("organization-email").value.trim(),organizationPhone:document.getElementById("organization-phone").value.trim(),
+representativeName:document.getElementById("representative-name").value.trim(),representativePosition:document.getElementById("representative-position").value.trim(),
+representativeEmail:document.getElementById("representative-email").value.trim(),representativePhone:document.getElementById("representative-phone").value.trim(),
+representativeIdType:document.getElementById("representative-id-type").value,documentType:documentType.value,website:document.getElementById("website").value.trim(),
+expectedTeachers:document.getElementById("expected-teachers").value,expectedClasses:document.getElementById("expected-classes").value,
+representativeIdFileName:document.getElementById("representative-id").files[0]?.name||"",
+organizationDocumentFileName:document.getElementById("organization-document").files[0]?.name||"",
+authorizationDocumentFileName:document.getElementById("authorization-document").files[0]?.name||"",
+submittedAt:new Date().toISOString()
+};
+try{
+localStorage.setItem("joint_organization_registration_draft",JSON.stringify(registration));
+showStatus("Registration draft saved on this device. Your organization has not been verified, and selected files have not been uploaded. Secure backend integration is required for that.",true);
+status.scrollIntoView({behavior:"smooth",block:"nearest"});
+}catch(error){showStatus("Unable to save the registration draft on this device.",false);}
+});
+})();
+</script>
+<script src="social.js"></script></body>
+</html>

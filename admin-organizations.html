@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Organization Review — JOINT Admin</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="hosting.css">
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;max-width:100%;overflow-x:hidden}
+.admin-page{width:100%;max-width:1000px;margin:auto;padding:24px 16px 110px}
+.card-admin{background:#fff;border:1px solid #e9e4f3;border-radius:20px;padding:20px 16px;margin:16px 0;box-shadow:0 8px 28px #321e5a0a;min-width:0}
+.notice{background:#fff9e9;border:1px solid #f0dfaa;color:#72591c;border-radius:14px;padding:15px;line-height:1.6}
+.purple-notice{background:#f0eaff;border:1px solid #dfd2ff;color:#45209a;border-radius:14px;padding:15px;line-height:1.6;margin-bottom:18px}
+.muted{color:#777486;line-height:1.6}.status{display:inline-block;padding:7px 12px;border-radius:999px;background:#fff2cc;color:#775600;font-weight:700}
+.status.approved{background:#e7f7ed;color:#17663e}.status.rejected{background:#fde8e7;color:#a21d17}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.detail{background:#faf9fd;border:1px solid #eeeaf5;border-radius:12px;padding:12px;overflow-wrap:anywhere;min-width:0}.detail strong{display:block;font-size:13px;color:#6f687f;margin-bottom:5px}.detail span{line-height:1.5;overflow-wrap:anywhere}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}.btn{border:0;border-radius:12px;padding:13px 16px;min-height:48px;font:inherit;font-weight:700;cursor:pointer}.approve{background:#18794e;color:white}.reject{background:#b42318;color:white}.neutral{background:#f0eaff;color:#5729b7}
+label{display:block;font-weight:700;margin:14px 0 7px}textarea{width:100%;min-height:90px;border:1px solid #ded9e8;border-radius:12px;padding:12px;font:inherit}
+@media(max-width:600px){.grid{grid-template-columns:minmax(0,1fr)}.actions .btn,.actions a{width:100%;text-align:center;justify-content:center}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a><nav class="main-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="meetings.html">Meetings</a><a href="classes.html">Classes</a><a href="friends.html">Friends</a><a href="chat.html">Chat</a><a href="timeline.html">Timeline</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a></nav><div class="top-actions"><div class="avatar">AD</div></div></div></header>
+<nav class="bottom-nav" aria-label="Mobile navigation"><a href="index.html"><span>⌂</span>Home</a><a href="meetings.html"><span>▣</span>Meetings</a><a href="classes.html"><span>▤</span>Classes</a><a href="friends.html"><span>♧</span>Friends</a><a href="chat.html"><span>✉</span>Chat</a></nav>
+<main class="admin-page">
+<div class="page-heading"><div class="eyebrow">JOINT ADMINISTRATION</div><h1>Organization verification</h1><p class="subtitle">Review organization registration details and record a demo decision.</p></div>
+<div class="purple-notice"><strong>Demo mode — not secure for real approvals.</strong> This page reads the registration draft saved in this browser only. It does not verify documents, upload files, or update accounts on a server. Do not use it for real approval decisions until Supabase authentication and server-side administrator permissions are connected.</div>
+<section class="card-admin"><h2>Application status</h2><p id="status-text" class="muted">Checking for a saved registration…</p><span id="status-pill" class="status">No application loaded</span></section>
+<section class="card-admin" id="application-card" hidden><h2 id="org-title">Organization details</h2><p class="muted">The form saves text fields only. Selected files are not available here because they have not been uploaded to a server.</p><div id="details-grid" class="grid"></div><label for="review-reason">Review note / reason for rejection</label><textarea id="review-reason" placeholder="Enter a clear reason or review note."></textarea><p class="muted">This note is stored only in this browser in demo mode.</p><div class="actions"><button class="btn approve" id="approve-btn" type="button">Approve demo application</button><button class="btn reject" id="reject-btn" type="button">Reject demo application</button><button class="btn neutral" id="reload-btn" type="button">Reload saved draft</button></div><p id="action-message" class="muted" role="status" aria-live="polite"></p></section>
+<section class="card-admin" id="empty-card" hidden><h2>No saved application found</h2><p class="muted">Open <strong>host-organization.html</strong>, fill in the form, and press <strong>Save organization registration</strong> in the same browser on this device. Then return here and tap Check again.</p><div class="actions"><a class="btn neutral" href="host-organization.html" style="text-decoration:none;display:inline-flex;align-items:center">Open organization registration</a><button class="btn neutral" id="empty-reload-btn" type="button">Check again</button></div></section>
+<div class="notice"><strong>Next integration step:</strong> save applications in Supabase, upload documents to private storage, require authenticated administrator accounts, and enforce approval permissions on the server. Browser localStorage is not proof of verification.</div>
+</main>
+<footer class="footer">JOINT · Learn, connect, and grow together</footer>
+<script src="navigation.js"></script>
+<script>
+(function(){
+const DRAFT="joint_organization_registration_draft", REVIEW="joint_organization_review_demo";
+const statusText=document.getElementById("status-text"), pill=document.getElementById("status-pill");
+const appCard=document.getElementById("application-card"), emptyCard=document.getElementById("empty-card");
+const grid=document.getElementById("details-grid"), reason=document.getElementById("review-reason"), message=document.getElementById("action-message");
+let app=null;
+const fields=[["Country","country"],["Organization name","organizationName"],["Username","organizationUsername"],["Category","organizationType"],["Legal registration type","registrationType"],["Registration number","registrationNumber"],["Description","description"],["Street address","address"],["City","city"],["State / region","region"],["Postal code","postalCode"],["Organization email","organizationEmail"],["Organization phone","organizationPhone"],["Representative name","representativeName"],["Representative position","representativePosition"],["Representative email","representativeEmail"],["Representative phone","representativePhone"],["Representative ID type","representativeIdType"],["Registration document type","documentType"],["Website","website"],["Expected teachers","expectedTeachers"],["Expected classes","expectedClasses"],["Submitted at","submittedAt"]];
+function setPill(s){pill.className="status";if(s.indexOf("Approved")===0)pill.classList.add("approved");if(s.indexOf("Rejected")===0)pill.classList.add("rejected");pill.textContent=s}
+function render(){
+message.textContent="";let raw;
+try{raw=localStorage.getItem(DRAFT)}catch(e){}
+if(!raw){app=null;appCard.hidden=true;emptyCard.hidden=false;statusText.textContent="No registration draft was found in this browser.";setPill("No application loaded");return}
+try{app=JSON.parse(raw)}catch(e){app=null}
+if(!app||typeof app!=="object"){appCard.hidden=true;emptyCard.hidden=false;statusText.textContent="The saved draft could not be read.";setPill("Draft unreadable");return}
+emptyCard.hidden=true;appCard.hidden=false;document.getElementById("org-title").textContent=app.organizationName||"Organization details";grid.replaceChildren();
+fields.forEach(([label,key])=>{const box=document.createElement("div"),strong=document.createElement("strong"),span=document.createElement("span");box.className="detail";strong.textContent=label;span.textContent=(app[key]===undefined||app[key]==="")?"Not provided":String(app[key]);box.append(strong,span);grid.appendChild(box)});
+let r={};try{r=JSON.parse(localStorage.getItem(REVIEW)||"{}")}catch(e){}reason.value=r.reason||"";statusText.textContent="A saved registration draft is available for demo review.";setPill(r.status?r.status+" (demo)":"Pending review (demo)")
+}
+function decide(s){if(!app){message.textContent="No application loaded. Save a registration draft first.";return}const data={status:s,reason:reason.value.trim(),reviewedAt:new Date().toISOString(),organizationName:app.organizationName||""};try{localStorage.setItem(REVIEW,JSON.stringify(data));setPill(s+" (demo)");statusText.textContent="Demo decision saved in this browser only.";message.textContent=s+" demo decision saved. No real account was approved or rejected on a server."}catch(e){message.textContent="Could not save the demo decision in browser storage."}}
+document.getElementById("approve-btn").addEventListener("click",()=>{if(confirm("Save an APPROVED demo status in this browser? This does not approve a real account."))decide("Approved")});
+document.getElementById("reject-btn").addEventListener("click",()=>{if(!reason.value.trim()){reason.focus();message.textContent="Enter a reason before recording a rejection.";return}if(confirm("Save a REJECTED demo status in this browser? This does not reject a real account."))decide("Rejected")});
+document.getElementById("reload-btn").addEventListener("click",render);document.getElementById("empty-reload-btn").addEventListener("click",render);render();
+})();
+</script>
+</body>
+</html>

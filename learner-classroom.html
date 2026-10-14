@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6938d1">
+
+<title>Learner Classroom — JOINT</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.classroom {
+  width: 100%;
+  max-width: 1200px;
+  margin: auto;
+  padding: 28px 16px 110px;
+}
+
+.classroom-header {
+  margin-bottom: 24px;
+}
+
+.classroom-header p,
+.classroom-card p {
+  color: #777486;
+  line-height: 1.7;
+}
+
+.classroom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+
+.classroom-card {
+  min-width: 0;
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #e7e1f1;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(40, 20, 70, .04);
+}
+
+.classroom-card h2 {
+  margin-top: 0;
+  font-size: 22px;
+}
+
+.course-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.course-card {
+  min-width: 0;
+  padding: 18px;
+  background: #fcfbff;
+  border: 1px solid #e7e1f1;
+  border-radius: 16px;
+}
+
+.course-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: #f0eaff;
+  font-size: 27px;
+}
+
+.course-card h3 {
+  overflow-wrap: anywhere;
+}
+
+.course-card p {
+  font-size: 14px;
+}
+
+.classroom-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 45px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 11px;
+  background: #6938d1;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.classroom-button.secondary {
+  background: #f0eaff;
+  color: #6938d1;
+  border: 1px solid #e0d5ff;
+}
+
+.classroom-button.danger {
+  background: #fff0f0;
+  color: #a52222;
+  border: 1px solid #f2cece;
+}
+
+.classroom-button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.course-card .classroom-button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 10px;
+  margin: 12px 0;
+  overflow: hidden;
+  background: #eee9f6;
+  border-radius: 20px;
+}
+
+.progress-fill {
+  width: 0;
+  height: 100%;
+  background: #6938d1;
+  border-radius: 20px;
+  transition: width .2s ease;
+}
+
+.learning-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+
+.lesson-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.lesson-item {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #e7e1f1;
+  border-radius: 12px;
+  background: #fcfbff;
+  color: #29243a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lesson-item.active {
+  border-color: #6938d1;
+  background: #f0eaff;
+  color: #6938d1;
+  font-weight: 700;
+}
+
+.lesson-item small {
+  display: block;
+  margin-top: 6px;
+  color: #777486;
+}
+
+.lesson-content {
+  min-width: 0;
+}
+
+.lesson-content h3 {
+  overflow-wrap: anywhere;
+}
+
+.video-frame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 16px 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #211735;
+}
+
+.video-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.lesson-notes {
+  padding: 16px;
+  border-radius: 14px;
+  background: #fcfbff;
+  border: 1px solid #e7e1f1;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.classroom-field {
+  margin-top: 16px;
+}
+
+.classroom-field label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.classroom-field input,
+.classroom-field select,
+.classroom-field textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 13px;
+  border: 1px solid #ddd6eb;
+  border-radius: 11px;
+  background: #fcfbff;
+  color: #29243a;
+  font: inherit;
+}
+
+.classroom-field textarea {
+  min-height: 130px;
+  resize: vertical;
+}
+
+.quiz-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 13px;
+  border: 1px solid #e7e1f1;
+  border-radius: 12px;
+  background: #fcfbff;
+  line-height: 1.6;
+}
+
+.quiz-option input {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  margin-top: 3px;
+}
+
+.quiz-option span {
+  overflow-wrap: anywhere;
+}
+
+.notice {
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid #f0dfa3;
+  border-radius: 14px;
+  background: #fff7df;
+  color: #755719;
+  line-height: 1.7;
+}
+
+.status-message {
+  display: none;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #eaf8ef;
+  color: #237547;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.status-message.error {
+  background: #fff0f0;
+  color: #a52222;
+}
+
+.empty-state {
+  padding: 22px;
+  border: 1px dashed #d9cfee;
+  border-radius: 14px;
+  color: #777486;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.stat {
+  padding: 16px;
+  border: 1px solid #e7e1f1;
+  border-radius: 15px;
+  background: #fff;
+}
+
+.stat span {
+  display: block;
+  margin-bottom: 8px;
+  color: #777486;
+  font-size: 13px;
+}
+
+.stat strong {
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 850px) {
+  .classroom-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .learning-layout {
+    grid-template-columns: minmax(240px, .8fr) minmax(0, 1.6fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .classroom {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .classroom-card {
+    padding: 16px;
+  }
+
+  .course-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stat-grid {
+    gap: 8px;
+  }
+
+  .stat {
+    padding: 12px;
+  }
+
+  .stat strong {
+    font-size: 20px;
+  }
+
+  .button-row {
+    flex-direction: column;
+  }
+
+  .button-row .classroom-button {
+    width: 100%;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+
+    <a class="brand" href="index.html">
+      <span class="brand-mark">J</span> JOINT
+    </a>
+
+    <nav class="main-nav" aria-label="Main navigation">
+      <a href="index.html">Home</a>
+      <a href="meetings.html">Meetings</a>
+      <a href="classes.html" class="active">Classes</a>
+      <a href="friends.html">Friends</a>
+      <a href="chat.html">Chat</a>
+      <a href="timeline.html">Timeline</a>
+      <a href="profile.html">Profile</a>
+      <a href="settings.html">Settings</a>
+    </nav>
+
+    <div class="top-actions">
+      <a class="avatar" href="profile.html" title="Open your profile" aria-label="Open your profile">JM</a>
+    </div>
+
+  </div>
+</header>
+
+<nav class="bottom-nav" aria-label="Mobile navigation">
+  <a href="index.html"><span>⌂</span>Home</a>
+  <a href="meetings.html"><span>▣</span>Meetings</a>
+  <a href="classes.html"><span>▤</span>Classes</a>
+  <a href="friends.html"><span>♧</span>Friends</a>
+  <a href="chat.html"><span>✉</span>Chat</a>
+</nav>
+
+<main class="classroom">
+
+  <header class="classroom-header">
+    <div class="eyebrow">JOINT LEARNING</div>
+    <h1>My Learning Classroom</h1>
+    <p>
+      Continue your courses, study lessons, practise with quizzes,
+      complete assignments, and track your progress.
+    </p>
+  </header>
+
+  <div class="notice">
+    <strong>Preview mode:</strong>
+    This classroom uses sample courses and browser storage.
+    It does not yet retrieve published courses, verify enrollment,
+    or submit work to a teacher. Do not submit confidential information.
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat">
+      <span>Enrolled courses</span>
+      <strong id="stat-courses">0</strong>
+    </div>
+
+    <div class="stat">
+      <span>Lessons completed</span>
+      <strong id="stat-lessons">0</strong>
+    </div>
+
+    <div class="stat">
+      <span>Overall progress</span>
+      <strong id="stat-progress">0%</strong>
+    </div>
+  </section>
+
+  <section class="classroom-card">
+    <h2>📚 Discover learning</h2>
+
+    <p>
+      Select a sample course to enrol and explore the learner experience.
+    </p>
+
+    <div id="available-courses" class="course-list"></div>
+  </section>
+
+  <section class="classroom-card" style="margin-top:20px">
+    <h2>🎓 My enrolled courses</h2>
+
+    <p>
+      Your enrolled sample courses will appear here.
+    </p>
+
+    <div id="my-courses" class="course-list"></div>
+  </section>
+
+  <section id="learning-area" class="classroom-card hidden"
+           style="margin-top:20px">
+
+    <h2 id="learning-course-title">Course classroom</h2>
+
+    <p id="learning-course-description"></p>
+
+    <div>
+      <strong id="course-progress-label">0% completed</strong>
+
+      <div class="progress-track">
+        <div id="course-progress-bar" class="progress-fill"></div>
+      </div>
+    </div>
+
+    <div class="learning-layout">
+
+      <aside>
+        <h3>Course lessons</h3>
+
+        <div id="lesson-list" class="lesson-list"></div>
+      </aside>
+
+      <article class="lesson-content">
+
+        <h3 id="lesson-title">Choose a lesson</h3>
+
+        <div id="video-container" class="video-frame hidden"></div>
+
+        <div id="lesson-notes" class="lesson-notes">
+          Select a lesson from the list to begin.
+        </div>
+
+        <div class="button-row">
+          <button class="classroom-button"
+                  id="complete-lesson"
+                  type="button">
+            Mark lesson complete
+          </button>
+
+          <button class="classroom-button secondary"
+                  id="next-lesson"
+                  type="button">
+            Next lesson →
+          </button>
+        </div>
+
+        <div id="lesson-message"
+             class="status-message"
+             role="status"
+             aria-live="polite"></div>
+
+      </article>
+    </div>
+  </section>
+
+  <section id="quiz-area" class="classroom-card hidden"
+           style="margin-top:20px">
+
+    <h2>📝 Practice quiz</h2>
+
+    <p>
+      Answer the question and check your result.
+    </p>
+
+    <form id="quiz-form">
+
+      <h3 id="quiz-question"></h3>
+
+      <div id="quiz-options"></div>
+
+      <button class="classroom-button" type="submit">
+        Check answer
+      </button>
+
+    </form>
+
+    <div id="quiz-message"
+         class="status-message"
+         role="status"
+         aria-live="polite"></div>
+  </section>
+
+  <section id="assignment-area" class="classroom-card hidden"
+           style="margin-top:20px">
+
+    <h2>📂 Course assignment</h2>
+
+    <p id="assignment-description"></p>
+
+    <form id="assignment-form">
+
+      <div class="classroom-field">
+        <label for="assignment-answer">
+          Your answer or submission notes
+        </label>
+
+        <textarea
+          id="assignment-answer"
+          maxlength="5000"
+          required
+          placeholder="Write your answer or explain the work you completed..."
+        ></textarea>
+      </div>
+
+      <div class="classroom-field">
+        <label for="assignment-link">
+          Optional link to your work
+        </label>
+
+        <input
+          id="assignment-link"
+          type="url"
+          maxlength="1000"
+          placeholder="https://example.com/your-work"
+        >
+      </div>
+
+      <button class="classroom-button" type="submit">
+        Save demo submission
+      </button>
+
+    </form>
+
+    <div id="assignment-message"
+         class="status-message"
+         role="status"
+         aria-live="polite"></div>
+
+    <hr style="border:0;border-top:1px solid #ece6f4;margin:24px 0">
+
+    <h3>My saved submission</h3>
+
+    <div id="saved-submission" class="empty-state">
+      No assignment submission saved yet.
+    </div>
+  </section>
+
+  <section class="classroom-card" style="margin-top:20px">
+    <h2>🏆 Certificates and achievements</h2>
+
+    <p>
+      Certificates can be issued when a learner completes the required
+      lessons and assessments. Certificate verification will be added
+      when the online learning system is connected.
+    </p>
+
+    <div id="achievement-area" class="empty-state">
+      Complete all lessons in a course to unlock the demo completion badge.
+    </div>
+  </section>
+
+  <div id="global-message"
+       class="status-message"
+       role="status"
+       aria-live="polite"></div>
+
+</main>
+
+<footer class="footer">
+  JOINT · Learn, connect, and grow together
+</footer>
+
+<script src="navigation.js"></script>
+
+<script>
+(function () {
+  "use strict";
+
+  const STORAGE_KEY = "joint_learner_classroom_demo_v1";
+
+  const sampleCourses = [
+    {
+      id: "graphic-design",
+      title: "Introduction to Graphic Design",
+      category: "Arts and Design",
+      icon: "🎨",
+      teacher: "JOINT Learning Team",
+      description:
+        "Learn the foundations of visual communication, colour, typography, and design.",
+      lessons: [
+        {
+          id: "design-1",
+          title: "What is graphic design?",
+          notes:
+            "Graphic design communicates ideas through visual elements.\n\n" +
+            "Designers combine text, colour, images, layout, and shape to " +
+            "communicate a message clearly.\n\n" +
+            "Practice: Identify three examples of graphic design around you.",
+          video: ""
+        },
+        {
+          id: "design-2",
+          title: "Understanding colour",
+          notes:
+            "Colour can communicate emotion, draw attention, and establish " +
+            "visual hierarchy.\n\n" +
+            "Practice: Choose three colours that work well together and " +
+            "explain why you selected them.",
+          video: ""
+        },
+        {
+          id: "design-3",
+          title: "Typography and layout",
+          notes:
+            "Typography is the arrangement and appearance of text.\n\n" +
+            "Use readable fonts, appropriate spacing, and a clear hierarchy " +
+            "to make information easier to understand.\n\n" +
+            "Practice: Create a simple headline and supporting paragraph.",
+          video: ""
+        }
+      ],
+      quiz: {
+        question: "What is one important purpose of graphic design?",
+        options: [
+          "To communicate ideas visually",
+          "To make every page difficult to read",
+          "To remove all visual structure",
+          "To use colours without a purpose"
+        ],
+        correct: 0
+      },
+      assignment: {
+        title: "Create a simple design concept",
+        instructions:
+          "Describe a poster you would create for a learning event. " +
+          "Explain your headline, colours, target audience, and layout."
+      }
+    },
+
+    {
+      id: "digital-skills",
+      title: "Essential Digital Skills",
+      category: "Technology",
+      icon: "💻",
+      teacher: "JOINT Learning Team",
+      description:
+        "Build confidence using digital tools, organizing files, and working safely online.",
+      lessons: [
+        {
+          id: "digital-1",
+          title: "Getting started with digital tools",
+          notes:
+            "Digital tools help people communicate, create, learn, and work.\n\n" +
+            "Start by understanding your device, applications, and internet connection.\n\n" +
+            "Practice: List three digital tools you use and what each helps you do.",
+          video: ""
+        },
+        {
+          id: "digital-2",
+          title: "Organizing files",
+          notes:
+            "Use clear file names and folders to keep your work organized.\n\n" +
+            "Save important work regularly and maintain backup copies.",
+          video: ""
+        },
+        {
+          id: "digital-3",
+          title: "Staying safe online",
+          notes:
+            "Use strong, unique passwords. Avoid sharing verification codes.\n\n" +
+            "Check website addresses before entering personal information.\n\n" +
+            "Be cautious of unexpected messages requesting money or account access.",
+          video: ""
+        }
+      ],
+      quiz: {
+        question: "Which is a good online safety practice?",
+        options: [
+          "Share passwords with strangers",
+          "Use strong, unique passwords",
+          "Publish verification codes publicly",
+          "Open every unexpected attachment"
+        ],
+        correct: 1
+      },
+      assignment: {
+        title: "Create a digital safety checklist",
+        instructions:
+          "Write five practical steps you can take to protect your accounts " +
+          "and personal information online."
+      }
+    },
+
+    {
+      id: "business-basics",
+      title: "Small Business Fundamentals",
+      category: "Business",
+      icon: "📈",
+      teacher: "JOINT Learning Team",
+      description:
+        "Explore customers, pricing, planning, and the basics of running a small business.",
+      lessons: [
+        {
+          id: "business-1",
+          title: "Understanding your customer",
+          notes:
+            "A customer is someone who may benefit from your product or service.\n\n" +
+            "Learn about their needs, challenges, budget, and preferences.",
+          video: ""
+        },
+        {
+          id: "business-2",
+          title: "Basic pricing",
+          notes:
+            "Pricing should account for costs, customer value, and your business goals.\n\n" +
+            "Calculate the costs involved before deciding what to charge.",
+          video: ""
+        },
+        {
+          id: "business-3",
+          title: "Planning your next steps",
+          notes:
+            "Set a clear goal, identify the resources required, and choose " +
+            "a realistic deadline.\n\n" +
+            "Review your results and improve your plan as you learn.",
+          video: ""
+        }
+      ],
+      quiz: {
+        question: "What should a business consider when setting a price?",
+        options: [
+          "Only the colour of its logo",
+          "Costs and the value offered",
+          "A random number with no explanation",
+          "Only what competitors charge, without considering costs"
+        ],
+        correct: 1
+      },
+      assignment: {
+        title: "Draft a simple business idea",
+        instructions:
+          "Describe a product or service, the customers it serves, " +
+          "the problem it solves, and the costs you would need to consider."
+      }
+    }
+  ];
+
+  let state = loadState();
+  let currentCourseId = "";
+  let currentLessonId = "";
+
+  const availableCourses =
+    document.getElementById("available-courses");
+
+  const myCourses = document.getElementById("my-courses");
+
+  const learningArea = document.getElementById("learning-area");
+  const quizArea = document.getElementById("quiz-area");
+  const assignmentArea = document.getElementById("assignment-area");
+
+  function loadState() {
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem(STORAGE_KEY) || "{}"
+      );
+
+      return {
+        enrolled: Array.isArray(saved.enrolled)
+          ? saved.enrolled : [],
+        progress: saved.progress && typeof saved.progress === "object"
+          ? saved.progress : {},
+        submissions: saved.submissions &&
+          typeof saved.submissions === "object"
+          ? saved.submissions : {},
+        quizResults: saved.quizResults &&
+          typeof saved.quizResults === "object"
+          ? saved.quizResults : {}
+      };
+    } catch (error) {
+      return {
+        enrolled: [],
+        progress: {},
+        submissions: {},
+        quizResults: {}
+      };
+    }
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      return true;
+    } catch (error) {
+      showMessage(
+        "Your browser could not save this demo. Storage may be full or unavailable.",
+        true
+      );
+      return false;
+    }
+  }
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = String(text);
+
+    return node;
+  }
+
+  function button(label, action, style) {
+    const node = el(
+      "button",
+      "classroom-button " + (style || ""),
+      label
+    );
+
+    node.type = "button";
+    node.addEventListener("click", action);
+
+    return node;
+  }
+
+  function showMessage(message, isError) {
+    const box = document.getElementById("global-message");
+
+    box.textContent = message;
+    box.classList.toggle("error", Boolean(isError));
+    box.style.display = "block";
+
+    box.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest"
+    });
+  }
+
+  function showSectionMessage(id, message, isError) {
+    const box = document.getElementById(id);
+
+    box.textContent = message;
+    box.classList.toggle("error", Boolean(isError));
+    box.style.display = "block";
+  }
+
+  function getCourse(id) {
+    return sampleCourses.find(function (course) {
+      return course.id === id;
+    });
+  }
+
+  function isEnrolled(id) {
+    return state.enrolled.includes(id);
+  }
+
+  function getCompleted(courseId) {
+    const progress = state.progress[courseId];
+
+    return progress && Array.isArray(progress.completed)
+      ? progress.completed : [];
+  }
+
+  function coursePercent(course) {
+    const completed = getCompleted(course.id).length;
+
+    return Math.round(
+      completed / course.lessons.length * 100
+    );
+  }
+
+  function renderCourseCard(course, enrolled) {
+    const card = el("article", "course-card");
+
+    card.appendChild(el("div", "course-icon", course.icon));
+    card.appendChild(el("h3", "", course.title));
+
+    card.appendChild(el(
+      "p",
+      "",
+      course.category + " · " + course.lessons.length + " lessons"
+    ));
+
+    card.appendChild(el("p", "", course.description));
+
+    card.appendChild(el(
+      "p",
+      "",
+      "Teacher: " + course.teacher
+    ));
+
+    if (enrolled) {
+      const percent = coursePercent(course);
+
+      const label = el("strong", "", percent + "% completed");
+      card.appendChild(label);
+
+      const track = el("div", "progress-track");
+      const fill = el("div", "progress-fill");
+
+      fill.style.width = percent + "%";
+      track.appendChild(fill);
+      card.appendChild(track);
+
+      card.appendChild(button("Continue learning", function () {
+        openCourse(course.id);
+      }));
+    } else {
+      card.appendChild(button("Enrol in demo course", function () {
+        enrol(course.id);
+      }));
+    }
+
+    return card;
+  }
+
+  function renderCourses() {
+    availableCourses.replaceChildren();
+    myCourses.replaceChildren();
+
+    const available = sampleCourses.filter(function (course) {
+      return !isEnrolled(course.id);
+    });
+
+    if (available.length === 0) {
+      availableCourses.appendChild(el(
+        "div",
+        "empty-state",
+        "You have enrolled in all sample courses."
+      ));
+    } else {
+      available.forEach(function (course) {
+        availableCourses.appendChild(
+          renderCourseCard(course, false)
+        );
+      });
+    }
+
+    const enrolled = sampleCourses.filter(function (course) {
+      return isEnrolled(course.id);
+    });
+
+    if (enrolled.length === 0) {
+      myCourses.appendChild(el(
+        "div",
+        "empty-state",
+        "You have not enrolled in a course yet. Choose one above to begin."
+      ));
+    } else {
+      enrolled.forEach(function (course) {
+        myCourses.appendChild(
+          renderCourseCard(course, true)
+        );
+      });
+    }
+
+    renderStats();
+    renderAchievements();
+  }
+
+  function enrol(courseId) {
+    const course = getCourse(courseId);
+
+    if (!course || isEnrolled(courseId)) return;
+
+    state.enrolled.push(courseId);
+
+    if (!saveState()) return;
+
+    renderCourses();
+
+    showMessage(
+      "You are enrolled in the sample course: " +
+      course.title + ".",
+      false
+    );
+
+    openCourse(courseId);
+  }
+
+  function renderStats() {
+    const courses = sampleCourses.filter(function (course) {
+      return isEnrolled(course.id);
+    });
+
+    let totalLessons = 0;
+    let completedLessons = 0;
+
+    courses.forEach(function (course) {
+      totalLessons += course.lessons.length;
+      completedLessons += getCompleted(course.id).length;
+    });
+
+    const percent = totalLessons
+      ? Math.round(completedLessons / totalLessons * 100)
+      : 0;
+
+    document.getElementById("stat-courses").textContent =
+      courses.length;
+
+    document.getElementById("stat-lessons").textContent =
+      completedLessons;
+
+    document.getElementById("stat-progress").textContent =
+      percent + "%";
+  }
+
+  function openCourse(courseId) {
+    const course = getCourse(courseId);
+
+    if (!course || !isEnrolled(courseId)) {
+      showMessage(
+        "Enrol in this course before opening its lessons.",
+        true
+      );
+      return;
+    }
+
+    currentCourseId = courseId;
+
+    currentLessonId = course.lessons[0].id;
+
+    document.getElementById("learning-course-title").textContent =
+      course.title;
+
+    document.getElementById("learning-course-description").textContent =
+      course.description;
+
+    document.getElementById("assignment-description").textContent =
+      course.assignment.title + ": " + course.assignment.instructions;
+
+    learningArea.classList.remove("hidden");
+    quizArea.classList.remove("hidden");
+    assignmentArea.classList.remove("hidden");
+
+    renderLessons();
+    renderQuiz();
+    renderSubmission();
+
+    learningArea.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+
+  function renderLessons() {
+    const course = getCourse(currentCourseId);
+
+    if (!course) return;
+
+    const list = document.getElementById("lesson-list");
+    list.replaceChildren();
+
+    const completed = getCompleted(course.id);
+
+    course.lessons.forEach(function (lesson, index) {
+      const item = el(
+        "button",
+        "lesson-item" +
+          (lesson.id === currentLessonId ? " active" : ""),
+        (completed.includes(lesson.id) ? "✓ " : "") +
+          (index + 1) + ". " + lesson.title
+      );
+
+      item.type = "button";
+
+      item.appendChild(el(
+        "small",
+        "",
+        completed.includes(lesson.id)
+          ? "Completed"
+          : "Not completed"
+      ));
+
+      item.addEventListener("click", function () {
+        currentLessonId = lesson.id;
+        renderLessons();
+      });
+
+      list.appendChild(item);
+    });
+
+    const lesson = course.lessons.find(function (item) {
+      return item.id === currentLessonId;
+    });
+
+    if (!lesson) return;
+
+    document.getElementById("lesson-title").textContent =
+      lesson.title;
+
+    document.getElementById("lesson-notes").textContent =
+      lesson.notes;
+
+    const videoContainer =
+      document.getElementById("video-container");
+
+    videoContainer.replaceChildren();
+    videoContainer.classList.add("hidden");
+
+    if (lesson.video) {
+      const iframe = document.createElement("iframe");
+
+      iframe.src = lesson.video;
+      iframe.title = lesson.title;
+      iframe.loading = "lazy";
+      iframe.allow =
+        "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+      iframe.allowFullscreen = true;
+      iframe.referrerPolicy = "strict-origin-when-cross-origin";
+
+      videoContainer.appendChild(iframe);
+      videoContainer.classList.remove("hidden");
+    }
+
+    const percent = coursePercent(course);
+
+    document.getElementById("course-progress-label").textContent =
+      percent + "% completed";
+
+    document.getElementById("course-progress-bar").style.width =
+      percent + "%";
+
+    const completeButton =
+      document.getElementById("complete-lesson");
+
+    completeButton.textContent =
+      completed.includes(lesson.id)
+        ? "Lesson completed ✓"
+        : "Mark lesson complete";
+
+    completeButton.disabled = completed.includes(lesson.id);
+  }
+
+  document.getElementById("complete-lesson").addEventListener(
+    "click",
+    function () {
+      const course = getCourse(currentCourseId);
+
+      if (!course || !currentLessonId) return;
+
+      const completed = getCompleted(course.id);
+
+      if (!completed.includes(currentLessonId)) {
+        completed.push(currentLessonId);
+
+        state.progress[course.id] = {
+          completed: completed
+        };
+
+        if (!saveState()) return;
+
+        renderLessons();
+        renderCourses();
+
+        showSectionMessage(
+          "lesson-message",
+          "Lesson marked complete in this browser.",
+          false
+        );
+      }
+    }
+  );
+
+  document.getElementById("next-lesson").addEventListener(
+    "click",
+    function () {
+      const course = getCourse(currentCourseId);
+
+      if (!course) return;
+
+      const currentIndex = course.lessons.findIndex(function (lesson) {
+        return lesson.id === currentLessonId;
+      });
+
+      if (currentIndex < 0 ||
+          currentIndex >= course.lessons.length - 1) {
+        showSectionMessage(
+          "lesson-message",
+          "You have reached the last lesson in this sample course.",
+          false
+        );
+        return;
+      }
+
+      currentLessonId = course.lessons[currentIndex + 1].id;
+
+      renderLessons();
+    }
+  );
+
+  function renderQuiz() {
+    const course = getCourse(currentCourseId);
+
+    if (!course) return;
+
+    document.getElementById("quiz-question").textContent =
+      course.quiz.question;
+
+    const options = document.getElementById("quiz-options");
+    options.replaceChildren();
+
+    course.quiz.options.forEach(function (option, index) {
+      const label = el("label", "quiz-option");
+
+      const input = document.createElement("input");
+
+      input.type = "radio";
+      input.name = "quiz-answer";
+      input.value = String(index);
+      input.required = true;
+
+      label.appendChild(input);
+      label.appendChild(el("span", "", option));
+
+      options.appendChild(label);
+    });
+
+    document.getElementById("quiz-message").style.display = "none";
+
+    if (state.quizResults[course.id]) {
+      const result = state.quizResults[course.id];
+
+      showSectionMessage(
+        "quiz-message",
+        "Latest saved demo result: " + result.score + "%.",
+        false
+      );
+    }
+  }
+
+  document.getElementById("quiz-form").addEventListener(
+    "submit",
+    function (event) {
+      event.preventDefault();
+
+      const course = getCourse(currentCourseId);
+
+      if (!course) return;
+
+      const selected = document.querySelector(
+        'input[name="quiz-answer"]:checked'
+      );
+
+      if (!selected) {
+        showSectionMessage(
+          "quiz-message",
+          "Please select an answer first.",
+          true
+        );
+        return;
+      }
+
+      const correct =
+        Number(selected.value) === course.quiz.correct;
+
+      const score = correct ? 100 : 0;
+
+      state.quizResults[course.id] = {
+        score: score,
+        correct: correct,
+        attemptedAt: new Date().toISOString()
+      };
+
+      if (!saveState()) return;
+
+      showSectionMessage(
+        "quiz-message",
+        correct
+          ? "Correct! Your demo score is 100%."
+          : "Not quite. Review the lesson and try again. Your demo score is 0%.",
+        !correct
+      );
+    }
+  );
+
+  document.getElementById("assignment-form").addEventListener(
+    "submit",
+    function (event) {
+      event.preventDefault();
+
+      const course = getCourse(currentCourseId);
+
+      if (!course) return;
+
+      const answer =
+        document.getElementById("assignment-answer").value.trim();
+
+      const link =
+        document.getElementById("assignment-link").value.trim();
+
+      if (!answer) {
+        showSectionMessage(
+          "assignment-message",
+          "Please enter your assignment response.",
+          true
+        );
+        return;
+      }
+
+      state.submissions[course.id] = {
+        answer: answer,
+        link: link,
+        submittedAt: new Date().toISOString(),
+        status: "Saved locally — not sent to teacher"
+      };
+
+      if (!saveState()) return;
+
+      renderSubmission();
+
+      showSectionMessage(
+        "assignment-message",
+        "Your demo submission has been saved in this browser only. It has not been sent to a teacher.",
+        false
+      );
+    }
+  );
+
+  function renderSubmission() {
+    const box = document.getElementById("saved-submission");
+    box.replaceChildren();
+
+    const submission = state.submissions[currentCourseId];
+
+    if (!submission) {
+      box.textContent = "No assignment submission saved yet.";
+      box.className = "empty-state";
+      return;
+    }
+
+    box.className = "lesson-notes";
+
+    box.appendChild(el("strong", "", submission.status));
+
+    box.appendChild(el("p", "", submission.answer));
+
+    if (submission.link) {
+      const link = document.createElement("a");
+
+      link.href = submission.link;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Open submitted work";
+
+      box.appendChild(link);
+    }
+
+    box.appendChild(el(
+      "p",
+      "",
+      "Saved: " + new Date(submission.submittedAt).toLocaleString()
+    ));
+  }
+
+  function renderAchievements() {
+    const box = document.getElementById("achievement-area");
+    box.replaceChildren();
+
+    const completedCourses = sampleCourses.filter(function (course) {
+      return isEnrolled(course.id) &&
+        coursePercent(course) === 100;
+    });
+
+    if (completedCourses.length === 0) {
+      box.className = "empty-state";
+      box.textContent =
+        "Complete all lessons in a course to unlock the demo completion badge.";
+      return;
+    }
+
+    box.className = "item-list";
+
+    completedCourses.forEach(function (course) {
+      const badge = el("article", "course-card");
+
+      badge.appendChild(el("div", "course-icon", "🏆"));
+      badge.appendChild(el("h3", "", course.title));
+      badge.appendChild(el(
+        "p",
+        "",
+        "Demo completion badge unlocked!"
+      ));
+
+      badge.appendChild(el(
+        "p",
+        "",
+        "This is not an official or verified certificate."
+      ));
+
+      box.appendChild(badge);
+    });
+  }
+
+  renderCourses();
+})();
+</script>
+
+</body>
+</html>
