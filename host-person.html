@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Individual Host Registration — JOINT</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="hosting.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+<a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a>
+<nav class="main-nav" aria-label="Main navigation">
+<a href="index.html">Home</a><a href="classes.html">Classes</a><a href="meetings.html">Meetings</a><a class="active" href="host-class.html">Host a class</a><a href="profile.html">Profile</a>
+</nav><div class="top-actions"><div class="avatar">JM</div></div></div></header>
+<nav class="bottom-nav"><a href="index.html"><span>⌂</span>Home</a><a href="classes.html"><span>▤</span>Learn</a><a href="meetings.html"><span>▣</span>Meet</a><a href="chat.html"><span>✉</span>Chat</a><a href="profile.html"><span>☺</span>Profile</a></nav>
+
+<main class="page">
+<div class="page-heading"><div><span class="step-tag">INDIVIDUAL HOST · STEP 1</span><h1>Personal host registration</h1>
+<p class="subtitle">Register as an independent teacher. Your classes will appear under your verified name or username.</p></div></div>
+<div class="notice" style="margin-bottom:18px"><strong>Demo only:</strong> Please do not enter real ID numbers or select real identity documents yet. This page does not send or securely store submitted information.</div>
+<div class="grid two">
+<section class="card"><form id="person-host-form">
+<div class="form-grid">
+<div class="field"><label for="country">Country of residence *</label><select id="country" name="country" required><option value="">Select your country</option><option>Nigeria</option><option>Ghana</option><option>Kenya</option><option>South Africa</option><option>United States</option><option>United Kingdom</option><option>Canada</option><option>India</option><option>Other</option></select><small>In the live system, this selection will determine available ID types and local verification rules.</small></div>
+<div class="field"><label for="username">Preferred username *</label><input id="username" name="username" required maxlength="40" placeholder="@YourName"></div>
+<div class="field"><label for="fullname">Full legal name *</label><input id="fullname" name="fullname" required autocomplete="name" placeholder="Name shown on your ID"></div>
+<div class="field"><label for="birthdate">Date of birth *</label><input id="birthdate" name="birthdate" type="date" required></div>
+<div class="field"><label for="email">Email address *</label><input id="email" name="email" type="email" required autocomplete="email" placeholder="you@example.com"></div>
+<div class="field"><label for="phone">Phone number *</label><input id="phone" name="phone" type="tel" required autocomplete="tel" placeholder="Include country calling code"></div>
+<div class="field"><label for="id-type">Identity document type *</label><select id="id-type" name="id_type" required><option value="">Select document</option><option>Passport</option><option>National identity card</option><option>Driver's licence</option><option>Residence permit</option><option>Other government-issued ID</option></select></div>
+<div class="field"><label for="id-number">Identity document number *</label><input id="id-number" name="id_number" required autocomplete="off" placeholder="Demo only — do not use a real number"></div>
+<div class="field full"><label for="address">Residential address *</label><input id="address" name="address" required autocomplete="street-address" placeholder="Street, city, state/region, postal code"></div>
+<div class="field full"><label for="id-file">Identity document file *</label><div class="upload-box"><input id="id-file" name="id_file" type="file" accept="image/*,.pdf" required><small>Clear image or PDF. Selecting a file does not upload it in this demo.</small></div></div>
+<div class="field full"><label for="selfie-file">Selfie or liveness check</label><div class="upload-box"><input id="selfie-file" name="selfie_file" type="file" accept="image/*"><small>This may be requested by the real verification provider where appropriate.</small></div></div>
+<div class="field full"><label class="consent"><input type="checkbox" required> I confirm that I am registering as myself and that my information is accurate.</label></div>
+</div>
+<div class="actions"><button type="submit">Continue to hosting rules</button><a class="btn ghost" href="host-class.html">Back to host options</a></div>
+<div id="person-host-success" class="success" role="status"></div>
+</form></section>
+<aside class="card">
+<h3>Your individual-host privileges</h3>
+<div class="feature-list">
+<div class="feature"><div class="icon-box">1</div><div><strong>One active class</strong><p>The platform will allow only one active class under an individual host account.</p></div></div>
+<div class="feature"><div class="icon-box">👤</div><div><strong>Personal control</strong><p>Only the verified individual host can manage the class.</p></div></div>
+<div class="feature"><div class="icon-box">🏷️</div><div><strong>Personal class identity</strong><p>The class will display the approved name or username associated with the host.</p></div></div>
+<div class="feature"><div class="icon-box">💳</div><div><strong>Paid classes</strong><p>Paid access or subscriptions can be enabled after verification and payment setup.</p></div></div>
+</div>
+<hr class="section-divider">
+<h3>What happens next?</h3><p class="muted">The live system will securely verify your identity, review your eligibility, and then let you create your one active class.</p>
+</aside></div>
+</main><footer class="footer">JOINT · Learn, connect, and grow together</footer>
+<script src="hosting.js"></script>
+</body></html>
