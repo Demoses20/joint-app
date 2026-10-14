@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6938d1">
+<title>JOINT — Learn, Connect and Grow</title>
+<link rel="stylesheet" href="style.css">
+<style>
+:root{--p:#6938d1;--pd:#5424b5;--pl:#f0e8ff;--bg:#f7f4fc;--bd:#e7e0f1;--tx:#242033;--muted:#777486}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--tx)}button{font:inherit;cursor:pointer}
+.feed-page{max-width:1250px;margin:auto;padding:22px 16px 110px}.feed-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}.feed-main{min-width:0}.feed-sidebar{display:none}
+.heading{margin:4px 0 8px}.heading h1{font-size:1.5rem;margin:0}.intro{color:var(--muted);line-height:1.7;margin:0 0 15px}
+.filters{display:flex;gap:9px;overflow-x:auto;padding:4px 0 12px}.filter{flex:0 0 auto;border:1px solid var(--bd);border-radius:999px;padding:10px 15px;background:#fff;color:var(--muted);font-weight:700}.filter.active{background:var(--p);color:#fff;border-color:var(--p)}
+.notice{padding:13px 15px;border-radius:12px;background:#fff5d9;color:#755719;line-height:1.7;font-size:.9rem;margin-bottom:17px}
+.post{background:#fff;border:1px solid var(--bd);border-radius:18px;padding:17px;margin-bottom:19px;min-width:0;overflow-wrap:anywhere;box-shadow:0 4px 18px #30204a08}
+.post-header{display:flex;align-items:flex-start;gap:11px}.avatar-post,.org-logo{width:46px;height:46px;flex:0 0 46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--pl);color:var(--p);font-weight:800}
+.author{flex:1;min-width:0}.author-name{font-weight:800}.meta{color:var(--muted);font-size:.84rem;margin-top:5px;line-height:1.5}.menu{border:0;background:transparent;color:var(--muted);font-size:1.3rem;padding:4px 8px}
+.category{display:inline-flex;padding:6px 11px;border-radius:999px;background:var(--pl);color:var(--pd);font-weight:700;font-size:.8rem;margin-top:13px}.post-text{line-height:1.8;margin:16px 0}
+.media{display:block;width:100%;max-height:440px;object-fit:cover;border-radius:14px;margin:12px 0}.video{width:100%;aspect-ratio:16/9;border:0;border-radius:14px;background:#171421;margin:12px 0}
+.link-card{display:block;text-decoration:none;color:var(--pd);padding:15px;border:1px solid var(--bd);border-radius:12px;background:#fcfaff;margin:12px 0;font-weight:800;line-height:1.6}.link-card small{display:block;color:var(--muted);font-weight:400;margin-top:5px}
+.stats{display:none}
+.actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid #f0ebf6}.action{min-width:0;min-height:68px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:1px solid transparent;background:transparent;color:var(--muted);padding:9px 3px;border-radius:12px;font-weight:700;font-size:1.45rem;line-height:1}.action:hover,.action.selected{background:var(--pl);color:var(--p)}.action-count{display:block;font-size:.82rem;font-weight:700;margin-top:2px;color:inherit;line-height:1.2}.action:focus-visible{outline:3px solid #bba0f4;outline-offset:2px}
+.comments{display:none;border-top:1px solid #f0ebf6;margin-top:9px;padding-top:12px}.comments.open{display:block}.action-count{display:block;font-size:.78rem;font-weight:500;margin-top:3px;color:inherit}.share-sheet{position:fixed;inset:0;z-index:9999;background:#1b152866;display:flex;align-items:flex-end;justify-content:center;padding:14px}.share-sheet[hidden]{display:none}.share-sheet-card{width:min(100%,520px);background:#fff;border-radius:20px 20px 14px 14px;padding:20px;box-shadow:0 12px 50px #0003}.share-sheet-card h2{margin:0 0 8px}.share-option{display:block;width:100%;text-align:left;border:1px solid var(--bd);background:#fcfaff;color:var(--tx);border-radius:12px;padding:14px;margin-top:10px;font-weight:700}.share-close{width:100%;margin-top:12px;border:0;background:var(--pl);color:var(--pd);border-radius:12px;padding:13px;font-weight:800}.comment{background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:8px;line-height:1.6;overflow-wrap:anywhere}.comment strong{display:block;font-size:.9rem;margin-bottom:3px}.comment-form{display:flex;gap:8px}.comment-form input{flex:1;min-width:0;border:1px solid var(--bd);border-radius:10px;padding:11px}.comment-form button{border:0;border-radius:10px;padding:10px 13px;background:var(--p);color:#fff;font-weight:700}
+.promo{border-radius:14px;padding:23px;color:#fff;background:linear-gradient(135deg,#382075,#6938d1,#a278f4);margin:13px 0}.promo h3{color:#fff;font-size:clamp(21px,5vw,29px);line-height:1.35;margin:10px 0}.promo p{line-height:1.7}.promo-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}.promo .org-logo{background:#fff}.promo a{display:inline-flex;background:#fff;color:var(--pd);text-decoration:none;margin-top:8px;padding:11px 15px;border-radius:10px;font-weight:700}
+.meeting{background:#f7f3ff;border:1px solid var(--bd);border-radius:13px;padding:15px;margin:12px 0}.meeting p{line-height:1.7}.panel{background:#fff;border:1px solid var(--bd);border-radius:18px;padding:18px;margin-bottom:18px}.sidebar-link{display:block;text-decoration:none;color:var(--tx);padding:12px 0;border-bottom:1px solid #f0ebf6;line-height:1.5}.sidebar-link strong{display:block;color:var(--pd)}.sidebar-link small{color:var(--muted)}.tag{display:inline-flex;padding:8px 11px;border-radius:999px;background:#f1eaff;color:var(--pd);margin:4px;font-size:.85rem}
+.empty{background:#fff;text-align:center;border:1px dashed var(--bd);border-radius:15px;padding:28px 18px;color:var(--muted);line-height:1.8}.empty[hidden],.more[hidden]{display:none!important}.more{width:100%;padding:14px;background:#fff;color:var(--p);border:1px solid var(--bd);border-radius:12px;font-weight:800;margin:15px 0 25px}
+
+.verified-tick{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;font-size:12px;font-weight:900;line-height:1;vertical-align:middle;margin-left:5px}
+.verified-tick.organization{background:#16834a;color:#fff}
+.verified-tick.personal-host{background:#f4c542;color:#4b3500}
+
+@media(min-width:900px){.feed-layout{grid-template-columns:minmax(0,1fr) 290px}.feed-sidebar{display:block;position:sticky;top:15px}}
+@media(max-width:600px){.feed-page{padding:14px 11px 110px}.post,.panel{padding:14px;border-radius:15px}.action{font-size:.76rem;padding:10px 1px}.comment-form{flex-wrap:wrap}.comment-form input,.comment-form button{flex-basis:100%;width:100%}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+<a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a>
+<nav class="main-nav" aria-label="Main navigation">
+<a href="index.html" class="active">Home</a><a href="meetings.html">Meetings</a><a href="classes.html">Classes</a><a href="my-learning.html">My Learning</a><a href="friends.html">Friends</a><a href="chat.html">Chat</a><a href="timeline.html">Timeline</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a>
+</nav><div class="top-actions"><a class="avatar" href="profile.html" title="Open your profile" aria-label="Open your profile">JM</a></div></div></header>
+<nav class="bottom-nav" aria-label="Mobile navigation">
+<a href="index.html" class="active"><span>⌂</span>Home</a><a href="meetings.html"><span>▣</span>Meetings</a><a href="classes.html"><span>▤</span>Classes</a><a href="friends.html"><span>♧</span>Friends</a><a href="chat.html"><span>✉</span>Chat</a>
+</nav>
+<main class="feed-page"><div class="feed-layout"><section class="feed-main" aria-label="Community feed">
+<div class="notice"><strong>Community feed:</strong> Posts from JOINT members are loaded from Supabase. Sample posts are demonstrations; likes, follows and comments are still browser-local.</div>
+<div id="feed"></div><div id="share-sheet" class="share-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="share-title"><div class="share-sheet-card"><h2 id="share-title">Share post</h2><p class="meta">Choose how you want to share this post.</p><button type="button" class="share-option" id="share-joint">👥 Share with JOINT friends</button><button type="button" class="share-option" id="share-outside">↗ Share outside JOINT</button><button type="button" class="share-option" id="repost-timeline">🔁 Repost to my timeline</button><button type="button" class="share-close" id="close-share">Cancel</button></div></div><div id="empty" class="empty" hidden><h3>No posts found</h3><p>Try another category or follow more creators to explore their posts.</p></div><button id="more" class="more" type="button">Show more posts</button>
+</section>
+<aside class="feed-sidebar">
+<section class="panel"><h2>Quick access</h2><a class="sidebar-link" href="classes.html"><strong>📚 Explore classes</strong><small>Discover courses and training.</small></a><a class="sidebar-link" href="my-learning.html"><strong>🎓 My Learning</strong><small>Continue your enrolled courses.</small></a><a class="sidebar-link" href="meetings.html"><strong>🎥 Meetings</strong><small>Find meetings and study groups.</small></a><a class="sidebar-link" href="friends.html"><strong>🤝 Find people</strong><small>Connect with other learners.</small></a></section>
+<section class="panel"><h2>Explore topics</h2><span class="tag">#WebDesign</span><span class="tag">#GraphicDesign</span><span class="tag">#Business</span><span class="tag">#Technology</span><span class="tag">#Training</span><span class="tag">#StudyGroups</span></section>
+</aside></div></main>
+<footer class="footer">JOINT · Learn, connect, and grow together</footer>
+<script src="navigation.js"></script>
+<script src="supabase.js"></script>
+<script>
+(function(){
+"use strict";
+const LK="joint_social_likes_demo_v1",FK="joint_social_follows_demo_v1",CK="joint_social_comments_demo_v1",SK="joint_social_shares_demo_v1",RK="joint_timeline_reposts_demo_v1",PAGE=8;
+const $=id=>document.getElementById(id);let count=PAGE,sharingPost=null,remotePosts=[];
+const samples=[
+{id:"demo-student-1",authorId:"demo-student-ada",author:"Ada Learner",initials:"AL",role:"Student",type:"student",time:"Sample post",text:"Today I completed my first website layout while learning HTML and CSS. I'm excited to keep improving. What skill are you learning this week?",category:"Student progress",likes:18,comments:[{author:"Sample learner",text:"Congratulations! Keep going."}]},
+{id:"demo-teacher-1",authorId:"demo-teacher-design",author:"Creative Skills Studio",initials:"CS",role:"Individual teacher",type:"teacher",time:"Sample post",text:"Want to learn graphic design from the beginning? This introductory training covers layout, colour, typography and practical design exercises.",category:"Creative skills",actionUrl:"classes.html",actionLabel:"Explore classes",likes:42,comments:[]},
+{id:"demo-school-1",authorId:"demo-organization-tech",author:"Future Skills Academy",initials:"FS",role:"School / Organization",type:"organization",time:"Sample advertisement",text:"Build practical digital skills with structured learning, guided exercises and project-based training. Explore the available learning opportunities on JOINT.",category:"Training advertisement",actionUrl:"classes.html",actionLabel:"Explore courses",advert:true,likes:87,comments:[]},
+{id:"demo-meeting-1",authorId:"demo-meeting-host",author:"Community Study Group",initials:"SG",role:"Meeting host",type:"meeting",time:"Sample meeting",text:"Join a community discussion about learning technology, building projects and sharing ideas with other learners.",category:"Public meeting",actionUrl:"meetings.html",actionLabel:"Explore meetings",likes:26,comments:[]},
+{id:"demo-learning-1",authorId:"demo-educator",author:"Learning Corner",initials:"LC",role:"Education creator",type:"education",time:"Sample post",text:"Learning tip: divide a difficult skill into smaller tasks. Practise one part at a time, build a small project, and review what you learned before moving on.",category:"Learning tips",actionUrl:"classes.html",actionLabel:"Find a class",likes:35,comments:[]},
+{id:"demo-school-2",authorId:"demo-organization-business",author:"Business Learning Centre",initials:"BL",role:"School / Organization",type:"organization",time:"Sample advertisement",text:"Interested in entrepreneurship? Explore learning about customer service, planning, budgeting and digital business tools.",category:"Business training",actionUrl:"classes.html",actionLabel:"View training",advert:true,likes:51,comments:[]},
+{id:"demo-student-2",authorId:"demo-student-lee",author:"Lee Projects",initials:"LP",role:"Student",type:"student",time:"Sample post",text:"I am looking for other learners interested in building projects together. Share what you are working on and let's learn!",category:"Community",actionUrl:"friends.html",actionLabel:"Find people",likes:12,comments:[]},
+{id:"demo-meeting-2",authorId:"demo-public-lecture",author:"Open Learning Community",initials:"OL",role:"Meeting host",type:"meeting",time:"Sample meeting",text:"Public learning discussion: share questions, discuss useful resources and exchange ideas with other members of the community.",category:"Learning discussion",actionUrl:"meetings.html",actionLabel:"View meetings",likes:19,comments:[]}
+];
+function read(k,f){try{const v=JSON.parse(localStorage.getItem(k)||"null");return v===null?f:v}catch(e){return f}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){alert("Could not save this change in your browser.");return false}}
+function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e}
+function list(k){const v=read(k,[]);return Array.isArray(v)?v:[]}
+function likes(){return list(LK)}function follows(){return list(FK)}function comments(){const v=read(CK,{});return v&&typeof v==="object"&&!Array.isArray(v)?v:{}}
+function isLiked(id){return likes().includes(id)}function isFollowing(id){return follows().includes(id)}
+function postComments(p){const saved=comments()[p.id];return [...(p.comments||[]),...(Array.isArray(saved)?saved:[])]}
+function url(value){if(typeof value!=="string"||!value.trim())return "";try{const u=new URL(value,location.href);return ["http:","https:"].includes(u.protocol)?u.href:""}catch(e){return ""}}
+function youtube(value){try{const u=new URL(value);let id="";if(u.hostname==="youtu.be")id=u.pathname.slice(1);else if(["youtube.com","www.youtube.com","m.youtube.com"].includes(u.hostname)){if(u.pathname==="/watch")id=u.searchParams.get("v")||"";else if(u.pathname.startsWith("/embed/")||u.pathname.startsWith("/shorts/"))id=u.pathname.split("/")[2]||""}return /^[A-Za-z0-9_-]{11}$/.test(id)?"https://www.youtube-nocookie.com/embed/"+id:""}catch(e){return ""}}
+function addMedia(p,card){const media=Array.isArray(p.mediaItems)?p.mediaItems:[];if(media.length){media.forEach(item=>{const u=url(item&&item.url);if(!u)return;if(item.type==="video"){const v=document.createElement("video");v.className="media video";v.src=u;v.controls=true;v.playsInline=true;v.preload="metadata";v.setAttribute("aria-label","Video shared in this post");card.appendChild(v)}else{const img=document.createElement("img");img.className="media";img.src=u;img.alt="Image shared in this post";img.loading="lazy";img.onerror=()=>img.replaceWith(el("p","This image could not be displayed.","meta"));card.appendChild(img)}});return}const u=url(p.mediaUrl);if(!u)return;if(p.mediaType==="image"){const img=document.createElement("img");img.className="media";img.src=u;img.alt="Image shared in this post";img.loading="lazy";img.onerror=()=>img.replaceWith(el("p","This image could not be displayed.","meta"));card.appendChild(img)}else if(p.mediaType==="youtube"){const embed=youtube(u);if(embed){const f=document.createElement("iframe");f.className="video";f.src=embed;f.title="Shared video";f.loading="lazy";f.allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";f.referrerPolicy="strict-origin-when-cross-origin";f.allowFullscreen=true;card.appendChild(f)}else{const a=el("a","Watch shared video","link-card");a.href=u;a.target="_blank";a.rel="noopener noreferrer";card.appendChild(a)}}}
+function renderOne(p){
+const card=el("article",undefined,"post"),head=el("div",undefined,"post-header"),av=el("div",p.initials||"J","avatar-post");if(p.avatarUrl){const img=el("img");img.src=p.avatarUrl;img.alt=(p.author||"Member")+" profile picture";img.loading="lazy";img.style.width="100%";img.style.height="100%";img.style.objectFit="cover";img.style.borderRadius="50%";img.onerror=()=>{img.remove();av.textContent=p.initials||"J"};av.textContent="";av.appendChild(img)}head.appendChild(av);
+const author=el("div",undefined,"author"),nameRow=el("div",undefined,"author-name");nameRow.appendChild(el("span",p.author));
+if(p.type==="organization"){const tick=el("span","✓","verified-tick organization");tick.title="Organization verification badge (demo display)";tick.setAttribute("aria-label","Organization verification badge");nameRow.appendChild(tick)}
+else if(p.type==="teacher"){const tick=el("span","✓","verified-tick personal-host");tick.title="Personal host verification badge (demo display)";tick.setAttribute("aria-label","Personal host verification badge");nameRow.appendChild(tick)}
+author.appendChild(nameRow);author.appendChild(el("div",p.role+" · "+p.time,"meta"));head.appendChild(author);
+const menu=el("button","⋯","menu");menu.type="button";menu.setAttribute("aria-label","Post options");menu.onclick=()=>alert("Post reporting and moderation will be connected to the JOINT backend later.");head.appendChild(menu);card.appendChild(head);
+card.appendChild(el("span",p.advert?"Sponsored / Advertisement preview":p.category||"Community","category"));card.appendChild(el("p",p.text,"post-text"));
+if(p.type==="organization"&&p.advert){const box=el("div",undefined,"promo"),row=el("div",undefined,"promo-row");row.appendChild(el("div",p.initials||"ORG","org-logo"));row.appendChild(el("strong",p.author));box.appendChild(row);box.appendChild(el("h3","Discover your next learning opportunity"));box.appendChild(el("p","Explore training opportunities and learning resources on JOINT."));const a=el("a",p.actionLabel||"Explore courses");a.href=url(p.actionUrl)||"classes.html";box.appendChild(a);card.appendChild(box)}
+if(p.type==="meeting"){const box=el("div",undefined,"meeting");box.appendChild(el("strong","🎥 Public learning meeting"));box.appendChild(el("p","Discover meeting information and available joining options."));const a=el("a",p.actionLabel||"Explore meetings","link-card");a.href=url(p.actionUrl)||"meetings.html";box.appendChild(a);card.appendChild(box)}
+addMedia(p,card);const dest=url(p.actionUrl);if(dest&&p.type!=="organization"&&p.type!=="meeting"){const a=el("a",(p.actionLabel||"Learn more")+" →","link-card");a.href=dest;if(!dest.startsWith(location.origin)){a.target="_blank";a.rel="noopener noreferrer"}a.appendChild(el("small","Open the related learning resource."));card.appendChild(a)}
+const actionCounts=el("div",undefined,"actions");
+const shareCounts=read(SK,{});
+const shareCount=Number(shareCounts[p.id]||0);
+const like=el("button",undefined,"action"+(isLiked(p.id)?" selected":""));
+like.type="button";
+like.setAttribute("aria-label",isLiked(p.id)?"Unlike post":"Like post");
+like.title=isLiked(p.id)?"Unlike post":"Like post";
+like.appendChild(document.createTextNode("❤️"));
+like.appendChild(el("span",String(Number(p.likes||0)+(isLiked(p.id)?1:0)),"action-count"));
+like.onclick=()=>{const a=likes(),i=a.indexOf(p.id);if(i>=0)a.splice(i,1);else a.push(p.id);if(save(LK,a))render()};
+actionCounts.appendChild(like);
+
+const cb=el("button",undefined,"action");
+cb.type="button";
+cb.setAttribute("aria-label","Show comments");
+cb.title="Show comments";
+cb.appendChild(document.createTextNode("💬"));
+cb.appendChild(el("span",String(postComments(p).length),"action-count"));
+cb.onclick=()=>{const section=card.querySelector(".comments");const opening=!section.classList.contains("open");section.classList.toggle("open",opening);cb.setAttribute("aria-expanded",String(opening));cb.setAttribute("aria-label",opening?"Hide comments":"Show comments");cb.title=opening?"Hide comments":"Show comments";if(opening)card.querySelector(".comment-form input").focus()};
+cb.setAttribute("aria-expanded","false");
+actionCounts.appendChild(cb);
+
+const sb=el("button",undefined,"action");
+sb.type="button";
+sb.setAttribute("aria-label","Share post");
+sb.title="Share post";
+sb.appendChild(document.createTextNode("↗️"));
+sb.appendChild(el("span",String(shareCount),"action-count"));
+sb.onclick=()=>openShare(p);
+actionCounts.appendChild(sb);
+
+const fb=el("button",undefined,"action"+(isFollowing(p.authorId)?" selected":""));
+fb.type="button";
+fb.setAttribute("aria-label",isFollowing(p.authorId)?"Unfollow creator":"Follow creator");
+fb.title=isFollowing(p.authorId)?"Unfollow creator":"Follow creator";
+fb.appendChild(document.createTextNode("⭐"));
+fb.appendChild(el("span",String(isFollowing(p.authorId)?1:0),"action-count"));
+fb.onclick=()=>{const a=follows(),i=a.indexOf(p.authorId);if(i>=0)a.splice(i,1);else a.push(p.authorId);if(save(FK,a))render()};
+actionCounts.appendChild(fb);
+card.appendChild(actionCounts);
+const section=el("section",undefined,"comments"),cl=el("div",undefined,"comment-list");postComments(p).forEach(c=>{const item=el("div",undefined,"comment");item.appendChild(el("strong",c.author||"JOINT member"));item.appendChild(el("span",c.text||""));cl.appendChild(item)});section.appendChild(cl);
+const form=el("form",undefined,"comment-form"),input=document.createElement("input");input.type="text";input.maxLength=500;input.placeholder="Write a comment…";input.required=true;input.setAttribute("aria-label","Write a comment");const send=el("button","Send");send.type="submit";form.appendChild(input);form.appendChild(send);form.onsubmit=e=>{e.preventDefault();const text=input.value.trim();if(!text)return;const all=comments();if(!Array.isArray(all[p.id]))all[p.id]=[];all[p.id].push({author:"You",text,createdAt:new Date().toISOString()});if(save(CK,all))render()};section.appendChild(form);card.appendChild(section);return card
+
+}
+function render(){const root=$("feed");root.replaceChildren();const own=(()=>{try{return JSON.parse(localStorage.getItem("joint_user_posts_demo_v2")||"[]")}catch(e){return []}})().map(x=>({id:x.id,authorId:"current-user",author:(()=>{try{return JSON.parse(localStorage.getItem("joint_profile_demo_v2")||"{}").name||"You"}catch(e){return "You"}})(),initials:"YO",avatarUrl:(()=>{try{return JSON.parse(localStorage.getItem("joint_profile_demo_v2")||"{}").avatar||""}catch(e){return ""}})(),role:"Member",type:"student",time:"Browser-local post",text:x.text||"",category:"Community post",likes:0,comments:[],mediaType:x.mediaType==="image"?"image":x.mediaType==="video"?"youtube":"none",mediaUrl:x.media||""}));const found=[...remotePosts,...own,...samples],shown=found.slice(0,count);shown.forEach(p=>root.appendChild(renderOne(p)));$("empty").hidden=found.length>0;$("more").hidden=shown.length>=found.length;$("empty").querySelector("p").textContent="Try again later or be the first to publish a post."}
+async function loadSharedFeed(){try{const client=await window.jointSupabaseConnection;const {data:userResult}=await client.auth.getUser();if(!userResult?.user)return;const {data:rows,error}=await client.from("joint_posts").select("id,author_id,content,media_urls,visibility,created_at").order("created_at",{ascending:false}).limit(50);if(error)throw error;const ids=[...new Set((rows||[]).map(r=>r.author_id).filter(Boolean))];let profiles=[];if(ids.length){const result=await client.from("joint_profiles").select("id,display_name,avatar_url,account_type").in("id",ids);if(result.error)throw result.error;profiles=result.data||[]}const byId=new Map(profiles.map(p=>[p.id,p]));remotePosts=(rows||[]).map(r=>{const profile=byId.get(r.author_id)||{};const name=profile.display_name||"JOINT member";const initials=name.trim().split(/\\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()||"J";const mediaItems=Array.isArray(r.media_urls)?r.media_urls:[];return{id:r.id,authorId:r.author_id,author:name,initials,avatarUrl:profile.avatar_url||"",role:profile.account_type||"Member",type:"student",time:r.created_at?new Date(r.created_at).toLocaleString():"",text:r.content||"",category:"Community post",likes:0,comments:[],mediaItems,mediaType:"none",mediaUrl:"",remote:true}});render()}catch(error){console.error("JOINT shared feed load failed:",error);const note=document.querySelector(".notice");if(note)note.title="Shared feed could not load: "+error.message}}
+
+function recordShare(postId){const totals=read(SK,{});totals[postId]=Number(totals[postId]||0)+1;save(SK,totals);render()}
+function openShare(post){sharingPost=post;$("share-sheet").hidden=false}
+function closeShare(){ $("share-sheet").hidden=true; sharingPost=null }
+$("close-share").addEventListener("click",closeShare);
+$("share-sheet").addEventListener("click",e=>{if(e.target===$("share-sheet"))closeShare()});
+$("share-joint").addEventListener("click",()=>{if(!sharingPost)return;recordShare(sharingPost.id);const message="JOINT friends sharing is a demo until accounts and messaging are connected. Post: "+sharingPost.author+" — "+sharingPost.text;closeShare();alert(message)});
+$("share-outside").addEventListener("click",async()=>{if(!sharingPost)return;const post=sharingPost;recordShare(post.id);const shareData={title:"JOINT post by "+post.author,text:post.author+" on JOINT: "+post.text,url:location.href};closeShare();try{if(navigator.share){await navigator.share(shareData)}else if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(shareData.text+"\\n"+shareData.url);alert("Post text copied. You can paste it into another app.")}else{prompt("Copy this post to share it:",shareData.text+"\\n"+shareData.url)}}catch(e){if(e.name!=="AbortError")alert("Sharing was not completed.")}});
+$("repost-timeline").addEventListener("click",()=>{if(!sharingPost)return;const post=sharingPost;recordShare(post.id);const reposts=read(RK,[]);reposts.unshift({id:"repost-"+Date.now(),type:"repost",repostedBy:"You",repostedAt:new Date().toISOString(),originalPost:{id:post.id,author:post.author,authorId:post.authorId,initials:post.initials,role:post.role,type:post.type,text:post.text,category:post.category,mediaType:post.mediaType||"none",mediaUrl:post.mediaUrl||"",actionUrl:post.actionUrl||"",actionLabel:post.actionLabel||"",advert:!!post.advert,likes:Number(post.likes||0),comments:post.comments||[]}});if(save(RK,reposts)){closeShare();alert("Reposted to your timeline in this browser. The original creator’s name and profile initials are preserved. Timeline syncing between JOINT accounts will work after backend integration.")}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("share-sheet").hidden)closeShare()});
+
+$("more").addEventListener("click",()=>{count+=PAGE;render()});render();loadSharedFeed();
+})();
+</script>
+<script src="social.js"></script></body>
+</html>
