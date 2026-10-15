@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JOINT Owner Admin</title><link rel="stylesheet" href="style.css">
+<style>.admin-wrap{max-width:900px;margin:auto;padding:24px 16px 100px}.admin-card{background:#fff;border:1px solid #e7e0f0;border-radius:18px;padding:22px;margin:16px 0}.admin-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.admin-link{display:block;padding:18px;border:1px solid #e7e0f0;border-radius:14px;text-decoration:none;color:inherit}.admin-link strong{display:block;color:#6938d1;font-size:1.1rem;margin-bottom:7px}.status{padding:12px;border-radius:10px;background:#f5f0ff}</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a><nav class="main-nav"><a href="index.html">Home</a><a class="active" href="admin.html">Owner Admin</a></nav></div></header>
+<main class="admin-wrap"><div class="eyebrow">OWNER CONTROL CENTER</div><h1>JOINT administration</h1><p class="subtitle">Manage school and institute hosting applications.</p><section class="admin-card"><h2>Administrator access</h2><p id="admin-status" class="status">Checking administrator account…</p><button id="signout" type="button" hidden>Sign out</button></section><section class="admin-links" id="admin-links" hidden><a class="admin-link" href="admin-school-applications.html"><strong>School applications</strong>Review documents, approve applications, or reject with a written reason.</a><a class="admin-link" href="host-school.html"><strong>Hosting application page</strong>Open the user-facing hosting application page.</a></section></main>
+<script src="supabase.js"></script><script>
+(async()=>{const status=document.getElementById('admin-status'),links=document.getElementById('admin-links'),out=document.getElementById('signout');try{const db=await window.jointSupabaseConnection;const {data,error}=await db.auth.getUser();if(error)throw error;if(!data.user){location.replace('auth.html?next='+encodeURIComponent('admin.html'));return}if((data.user.email||'').toLowerCase()!=='technicaldemoses@gmail.com'){status.textContent='This account is not authorized to access Owner Admin.';out.hidden=false;out.onclick=async()=>{await db.auth.signOut();location.href='auth.html'};return}status.textContent='Signed in as the authorized administrator.';links.hidden=false;out.hidden=false;out.onclick=async()=>{await db.auth.signOut();location.href='auth.html'}}catch(e){status.textContent='Unable to verify administrator access. Please try again.';console.error(e)}})();
+</script></body></html>
