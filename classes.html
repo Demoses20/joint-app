@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6938d1">
+<title>Explore classes — JOINT</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.class-card{min-width:0;display:flex;flex-direction:column;gap:10px}
+.class-card h3{margin:4px 0}
+.class-card p{line-height:1.65}
+.class-card .btn{align-self:flex-start;margin-top:auto}
+.class-card .course-price{font-weight:800;color:#5424b5}
+.course-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.course-detail{margin-top:18px}
+.course-detail .lesson-row{border:1px solid #e7e0f1;border-radius:12px;padding:14px;margin:12px 0;background:#fcfaff}
+.course-detail iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;margin-top:10px}
+.course-detail textarea{width:100%;min-height:80px;padding:12px;border:1px solid #dcd3eb;border-radius:10px;font:inherit}
+.status-message{padding:12px 14px;border-radius:12px;background:#e8f7ed;color:#237547;margin:14px 0;line-height:1.6}
+.status-message.warning{background:#fff5d9;color:#755719}
+.btn.small{padding:9px 12px;font-size:.95rem}
+@media(max-width:600px){.class-card .btn{align-self:stretch}.course-detail .actions{display:flex;flex-direction:column}.course-detail .actions .btn{width:100%}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+<a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a>
+<nav class="main-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="meetings.html">Meetings</a><a href="classes.html" class="active">Classes</a><a href="friends.html">Friends</a><a href="chat.html">Chat</a><a href="timeline.html">Timeline</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a></nav>
+<div class="top-actions"><a class="btn secondary desktop-only" href="host-school.html">＋ Host</a><div class="avatar" title="Your profile">JM</div></div>
+</div></header>
+<nav class="bottom-nav" aria-label="Mobile navigation"><a href="index.html"><span>⌂</span>Home</a><a href="meetings.html"><span>▣</span>Meetings</a><a href="classes.html" class="active"><span>▤</span>Classes</a><a href="friends.html"><span>♧</span>Friends</a><a href="chat.html"><span>✉</span>Chat</a></nav>
+
+<main class="page">
+  <div class="page-heading"><div><div class="eyebrow">Learn a skill</div><h1>Explore classes</h1><p class="subtitle">Discover classes, follow lessons, and learn at your own pace.</p></div></div>
+  <div class="toolbar"><input class="search" id="class-search" type="search" placeholder="Search classes or skills…" aria-label="Search classes or skills"><a class="btn" href="host-class.html">＋ Host a class</a></div>
+  <div id="class-notice" class="status-message warning" hidden></div>
+  <div class="grid three" id="class-list"></div>
+  <p id="class-empty" class="empty-state hide">No classes match your search.</p>
+  <section id="course-detail" class="card course-detail" hidden></section>
+</main>
+<footer class="footer">JOINT · Learn, connect, and grow together</footer>
+<script src="navigation.js"></script><script src="supabase.js"></script>
+<script>
+(()=>{'use strict';const $=id=>document.getElementById(id);let db,rows=[];
+const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);if(cls)n.className=cls;return n};
+const notice=(t,bad=false)=>{const n=$('class-notice');n.hidden=!t;n.textContent=t||'';n.classList.toggle('warning',bad)};
+async function imageUrl(path){if(!path)return '';try{const {data,error}=await db.storage.from('joint-host-verification').createSignedUrl(path,900);return error?'':data?.signedUrl||''}catch(_){return ''}}
+function money(v){return Number(v||0)>0?'₦'+Number(v).toLocaleString():'Free to join'}
+function render(){const q=$('class-search').value.trim().toLowerCase(),box=$('class-list');box.replaceChildren();const filtered=rows.filter(x=>[x.school_name,x.title,x.class_type,x.description,x.category,x.city,x.state_region,x.country].join(' ').toLowerCase().includes(q));for(const x of filtered){const card=el('article',undefined,'card class-card');if(x.banner_url){const banner=el('img');banner.src=x.banner_url;banner.alt=x.title+' banner';banner.loading='lazy';banner.style.cssText='width:100%;height:170px;object-fit:cover;border-radius:12px';card.append(banner)}else{const cover=el('div','Learn • Practise • Grow','icon-box');cover.style.cssText='width:100%;min-height:100px;display:grid;place-items:center;background:linear-gradient(135deg,#5424b5,#9869f1);color:white;font-weight:800';card.append(cover)}const head=el('div',undefined,'course-meta');if(x.logo_url){const logo=el('img');logo.src=x.logo_url;logo.alt=x.school_name+' logo';logo.loading='lazy';logo.style.cssText='width:54px;height:54px;object-fit:contain;border-radius:12px;background:#fff;border:1px solid #eee';head.append(logo)}head.append(el('span','SCHOOL / INSTITUTE','pill'));card.append(head);card.append(el('h3',x.title));card.append(el('p',x.description||'Explore subjects, practicals and lessons in this class.'));card.append(el('p',x.school_name+' · '+[x.city,x.state_region,x.country].filter(Boolean).join(', '),'muted'));card.append(el('p',money(x.price),'course-price'));const btn=el('a','Explore classes & courses','btn');btn.href='class-room.html?class='+encodeURIComponent(x.id)+'&application='+encodeURIComponent(x.application_id);card.append(btn);box.append(card)}$('class-empty').classList.toggle('hide',filtered.length>0);if(!filtered.length&&!q)notice('No published classes are available yet. Check back soon.');else notice('')}
+async function boot(){try{db=await window.jointSupabaseConnection;if(!db)throw Error('Could not connect to learning services. Please refresh and try again.');const {data:apps,error:ae}=await db.from('joint_public_schools').select('id,school_name,category,country,state_region,city,logo_path');if(ae)throw ae;const publishedApps=apps||[];if(!publishedApps.length){rows=[];render();return}const ids=publishedApps.map(a=>a.id);const {data:classes,error:ce}=await db.from('joint_school_classes').select('id,application_id,title,class_type,price,description,is_active,banner_url').in('application_id',ids).eq('is_active',true).order('created_at',{ascending:false});if(ce)throw ce;const byId=new Map(publishedApps.map(a=>[a.id,a]));rows=await Promise.all((classes||[]).map(async c=>{const a=byId.get(c.application_id);return {...c,...a,logo_url:await imageUrl(a.logo_path),banner_url:c.banner_url?publicMedia(c.banner_url):''}}));render()}catch(e){console.error(e);notice('We could not load classes right now. Please refresh and try again.',true)}}
+function publicMedia(path){if(/^https?:\/\//i.test(path))return path;try{return db.storage.from('joint-learning-media').getPublicUrl(path).data.publicUrl}catch(_){return ''}}
+$('class-search').addEventListener('input',render);boot();})();
+</script></body></html>
