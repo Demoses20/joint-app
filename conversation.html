@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conversation — JOINT</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.jconv-wrap{max-width:850px;margin:0 auto}
+.jconv-back{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:#6032c5;font-weight:700;margin-bottom:10px;padding:8px 0}
+.jconv-card{display:flex;flex-direction:column;min-height:55vh;max-height:none;overflow:visible}
+.jconv-head{display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line,#e8e2ef)}
+.jconv-avatar{width:44px;height:44px;flex:0 0 44px;border-radius:50%;object-fit:cover;background:#eee7fa;display:grid;place-items:center;font-weight:700;color:#6032c5}
+.jconv-messages{flex:1;min-height:180px;max-height:65vh;overflow-y:auto;overscroll-behavior-y:auto;touch-action:pan-y;display:flex;flex-direction:column;gap:10px;padding:16px 2px}
+.jconv-bubble{max-width:82%;padding:11px 14px;border-radius:16px;background:#f3eff9;overflow-wrap:anywhere;white-space:pre-wrap}.jconv-bubble .jconv-body{margin:5px 0}.jconv-message-author{display:flex;align-items:center;gap:7px;font-size:.82rem;margin-bottom:6px}.jconv-message-author a{color:inherit;text-decoration:none}.jconv-message-avatar{width:27px;height:27px;display:grid;place-items:center;flex:0 0 27px;border-radius:50%;overflow:hidden;background:#e9ddff;color:#5428a9;font-weight:800}.jconv-message-avatar img{width:100%;height:100%;object-fit:cover}.jconv-media-image,.jconv-media-video{display:block;max-width:min(100%,420px);max-height:320px;border-radius:12px}.jconv-media-audio{display:block;width:min(100%,340px);margin:8px 0}.jconv-reactions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:8px;position:relative}.jconv-reaction-plus,.jconv-reaction-count,.jconv-reaction-picker button{border:0;border-radius:999px;background:#e9ddff;color:#35204e;padding:4px 8px;cursor:pointer;font-size:15px}.jconv-reaction-plus{font-weight:800}.jconv-reaction-count.mine{outline:2px solid #6335c7}.jconv-reaction-picker{display:flex;gap:3px;flex-wrap:wrap;padding:5px;border:1px solid #e1d6f1;border-radius:999px;background:#fff;box-shadow:0 4px 12px #24163a15}.jconv-reaction-picker[hidden]{display:none}.jconv-message-actions{display:flex;gap:6px;margin-top:6px}.jconv-message-actions button,.jconv-reply-composer button{border:0;border-radius:9px;padding:5px 10px;background:#eee5ff;color:#5428a9;cursor:pointer;font:inherit;font-size:.82rem}.jconv-thread{margin:8px 0 0 12px;padding-left:10px;border-left:3px solid #bba0f2}.jconv-bubble.jconv-reply{max-width:100%;padding:9px 11px;margin:7px 0;border-radius:12px;background:#f8f4ff;color:#30213f}.jconv-reply-composer{margin:8px 0 4px 12px;padding:10px;border-left:3px solid #6335c7;background:#faf7ff;border-radius:0 10px 10px 0}.jconv-reply-composer[hidden]{display:none}.jconv-reply-composer form{display:grid;gap:7px}.jconv-reply-composer textarea{width:100%;box-sizing:border-box;border:1px solid #dcd4e9;border-radius:10px;padding:10px;font:inherit}
+.jconv-bubble.mine{align-self:flex-end;background:#6335c7;color:white;border-bottom-right-radius:5px}
+.jconv-bubble.theirs{align-self:flex-start;border-bottom-left-radius:5px}
+.jconv-meta{display:block;font-size:.75rem;opacity:.75;margin-top:5px}
+.jconv-form{display:flex;gap:9px;align-items:flex-end;border-top:1px solid var(--line,#e8e2ef);padding-top:12px;flex-wrap:wrap}.jconv-attach-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.jconv-attach-row label,.jconv-attach-row button{border:0;border-radius:11px;background:#eee5ff;color:#5428a9;padding:10px 13px;font:600 14px inherit;cursor:pointer}.jconv-attach-status{color:var(--muted,#777);min-height:1.2em}
+.jconv-input{flex:1;min-width:0;resize:vertical;max-height:120px;min-height:46px;padding:12px;border:1px solid #dcd4e9;border-radius:13px;font:inherit;box-sizing:border-box}
+.jconv-send{border:0;border-radius:13px;background:#6335c7;color:white;padding:13px 18px;font-weight:700;cursor:pointer}
+.jconv-send:disabled{opacity:.55}
+.jconv-status{color:var(--muted,#777);padding:8px 0}
+@media(max-width:520px){.jconv-card{min-height:55vh;max-height:none;padding:14px}.jconv-messages{max-height:58vh}.jconv-bubble{max-width:95%}.jconv-send{padding:13px 14px}.jconv-form{position:relative}.jconv-thread{margin-left:5px;padding-left:7px}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+<a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a>
+<nav class="main-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="meetings.html">Meetings</a><a href="classes.html">Courses</a><a href="my-learning.html">My Learning</a><a href="friends.html">Friends</a><a href="chat.html" class="active">Chat</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a></nav>
+<div class="top-actions"><a class="avatar" href="profile.html" title="Open your profile" aria-label="Open your profile">J</a></div>
+</div></header>
+<nav class="bottom-nav" aria-label="Mobile navigation"><a href="index.html"><span>⌂</span>Home</a><a href="meetings.html"><span>▣</span>Meetings</a><a href="classes.html"><span>▤</span>Courses</a><a href="friends.html"><span>♧</span>Friends</a><a href="chat.html" class="active"><span>✉</span>Chat</a></nav>
+<main class="page jconv-wrap">
+<div class="page-heading"><div><a href="chat.html" class="jconv-back" aria-label="Back to Chat">← <span>Back to Chat</span></a><h1 id="jconv-title" style="margin-top:4px">Conversation</h1></div></div>
+<section class="card jconv-card">
+<div class="jconv-head"><div id="jconv-avatar" class="jconv-avatar">J</div><div><strong id="jconv-name">Loading…</strong><div id="jconv-subtitle" class="muted">Private conversation</div></div></div>
+<div id="jconv-messages" class="jconv-messages" aria-live="polite"><p class="jconv-status">Loading messages…</p></div>
+<form id="jconv-form" class="jconv-form"><textarea id="jconv-input" class="jconv-input" maxlength="5000" rows="1" placeholder="Write a message…" required></textarea><button id="jconv-send" class="jconv-send" type="submit">Send</button></form>
+<div class="jconv-attach-row"><label for="jconv-file">＋ Insert image / video</label><input id="jconv-file" type="file" accept="image/*,video/*" hidden><button id="jconv-record-voice" type="button">🎙️ Voice note</button><button id="jconv-stop-voice" type="button" hidden>Stop &amp; send voice note</button></div><p id="jconv-status" class="jconv-status jconv-attach-status" role="status" aria-live="polite"></p>
+</section>
+</main>
+<footer class="footer">JOINT · Learn, connect, and grow together</footer>
+<script src="navigation.js"></script>
+<script src="supabase.js"></script>
+<script src="chat-backend.js"></script>
+</body></html>
