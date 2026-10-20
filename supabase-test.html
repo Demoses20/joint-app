@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JOINT Backend Test</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      background: #f4f7f6;
+      color: #17231e;
+    }
+
+    main {
+      max-width: 520px;
+      margin: 40px auto;
+      padding: 24px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px #00000012;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    #result {
+      padding: 16px;
+      border-radius: 10px;
+      background: #eeeeee;
+      overflow-wrap: anywhere;
+      line-height: 1.6;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: 0;
+      border-radius: 9px;
+      background: #087f5b;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+
+  <script src="./supabase.js"></script>
+</head>
+
+<body>
+  <main>
+    <h1>JOINT Backend Test</h1>
+
+    <p>
+      This page checks whether JOINT can communicate
+      with its Supabase database.
+    </p>
+
+    <div id="result" role="status" aria-live="polite">
+      Preparing connection test...
+    </div>
+
+    <p>
+      <button id="test-button" type="button">
+        Test connection again
+      </button>
+    </p>
+  </main>
+
+  <script>
+    const result = document.getElementById("result");
+    const button = document.getElementById("test-button");
+
+    async function testConnection() {
+      button.disabled = true;
+      result.textContent = "Connecting to JOINT...";
+
+      try {
+        if (!window.jointSupabaseConnection) {
+          throw new Error(
+            "Connection setup not found. Check supabase.js."
+          );
+        }
+
+        const client = await window.jointSupabaseConnection;
+
+        const { error } = await client
+          .from("joint_profiles")
+          .select("id")
+          .limit(1);
+
+        if (error) {
+          throw error;
+        }
+
+        result.textContent =
+          "SUCCESS: JOINT can communicate with Supabase. " +
+          "The database responded successfully. " +
+          "Next, we will connect user registration and login.";
+      } catch (error) {
+        console.error("JOINT connection test:", error);
+
+        result.textContent =
+          "CONNECTION TEST FAILED: " +
+          (error.message || "Unknown error") +
+          ". Check the Project URL, publishable key, " +
+          "table name, and GitHub Pages deployment.";
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    button.addEventListener("click", testConnection);
+    testConnection();
+  </script>
+<script src="operation-loading-bar.js" defer></script>
+</body>
+</html>
