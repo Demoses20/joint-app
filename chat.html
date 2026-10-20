@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chat — JOINT</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.jchat-wrap{max-width:980px;margin:0 auto}
+.jchat-search{width:100%;box-sizing:border-box;padding:13px 15px;border:1px solid var(--line,#ded8e8);border-radius:14px;font:inherit;margin:8px 0 16px}
+.jchat-person{display:flex;align-items:center;gap:10px;padding:14px 0;border-bottom:1px solid var(--line,#e8e2ef);position:relative}.jchat-profile-link{display:flex;align-items:center;gap:12px;min-width:0;flex:1;color:inherit;text-decoration:none}.jchat-menu-wrap{position:relative;flex:0 0 auto}.jchat-menu-button{border:0;background:#f2eaff;color:#5428a9;border-radius:50%;width:38px;height:38px;font-size:22px;font-weight:800;cursor:pointer}.jchat-menu{position:absolute;right:0;top:42px;z-index:10;min-width:170px;background:#fff;border:1px solid #e4dcef;border-radius:12px;box-shadow:0 8px 24px #24163a22;padding:6px}.jchat-menu[hidden]{display:none}.jchat-menu button{display:block;width:100%;border:0;background:transparent;text-align:left;padding:10px;border-radius:8px;font:inherit;color:#30213f;cursor:pointer}.jchat-menu button:hover{background:#f2eaff}
+.jchat-list-scroll{max-height:340px;overflow-y:auto;overscroll-behavior-y:auto;touch-action:pan-y;padding-right:4px}
+.jchat-list-scroll .jchat-person:first-child{padding-top:4px}
+.jchat-unread{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:999px;background:#e63c66;color:#fff;font-size:12px;font-weight:800;line-height:1}
+.bottom-nav .jchat-nav-badge,.main-nav .jchat-nav-badge{margin-left:4px;vertical-align:middle}
+.jchat-person:last-child{border-bottom:0}
+.jchat-avatar{width:46px;height:46px;flex:0 0 46px;border-radius:50%;object-fit:cover;background:#eee7fa;display:grid;place-items:center;font-weight:700;color:#6032c5}
+.jchat-person-main{min-width:0;flex:1}
+.jchat-person-main h3{margin:0 0 4px;font-size:1rem}
+.jchat-person-main p{margin:0;color:var(--muted,#777);overflow-wrap:anywhere}
+.jchat-button{border:1px solid #ded4f3;background:#f2eaff;color:#5428a9;border-radius:12px;padding:10px 14px;font:600 14px inherit;cursor:pointer;white-space:nowrap}
+.jchat-status{margin:10px 0;color:var(--muted,#777)}
+.jchat-empty{padding:24px 8px;text-align:center;color:var(--muted,#777)}
+.jchat-unread{display:inline-flex;margin-left:5px;padding:3px 7px;border-radius:999px;background:#e83d67;color:#fff;font-size:11px;font-weight:800}.jchat-list-scroll{overscroll-behavior-y:auto}@media(max-width:520px){.jchat-person{gap:7px}.jchat-button{padding:9px 10px;font-size:13px}.jchat-avatar{width:42px;height:42px;flex-basis:42px}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+<a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a>
+<nav class="main-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="meetings.html">Meetings</a><a href="classes.html">Courses</a><a href="my-learning.html">My Learning</a><a href="friends.html">Friends</a><a href="chat.html" class="active">Chat</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a></nav>
+<div class="top-actions"><a class="avatar" href="profile.html" title="Open your profile" aria-label="Open your profile">J</a></div>
+</div></header>
+<nav class="bottom-nav" aria-label="Mobile navigation"><a href="index.html"><span>⌂</span>Home</a><a href="meetings.html"><span>▣</span>Meetings</a><a href="classes.html"><span>▤</span>Courses</a><a href="friends.html"><span>♧</span>Friends</a><a href="chat.html" class="active"><span>✉</span>Chat</a></nav>
+<main class="page jchat-wrap">
+<div class="page-heading"><div><h1>Messages</h1><p class="subtitle">Your conversations</p></div></div>
+<section class="card">
+<h2 style="margin-top:0">Start a conversation</h2>
+<input id="jchat-member-search" class="jchat-search" type="search" placeholder="Search members by name" autocomplete="off">
+<div id="jchat-members" class="jchat-list-scroll"><p class="jchat-status">Loading members…</p></div>
+</section>
+<section class="card" style="margin-top:18px">
+<h2 style="margin-top:0">Your conversations</h2>
+<div id="jchat-conversations" class="jchat-list-scroll"><p class="jchat-status">Loading conversations…</p></div>
+</section>
+<p id="jchat-status" class="jchat-status" role="status" aria-live="polite"></p>
+</main>
+<footer class="footer">JOINT · Learn, connect, and grow together</footer>
+<script src="navigation.js"></script>
+<script src="supabase.js"></script>
+<script src="chat-backend.js"></script>
+<script src="progress-indicator.js"></script>
+</body></html>
