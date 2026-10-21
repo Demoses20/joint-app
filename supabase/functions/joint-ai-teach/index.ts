@@ -85,9 +85,15 @@ if (!anonKey) {
 }
 
 if (!openAiKey || !supabaseUrl || !anonKey) {
+  console.error("JOINT AI configuration check:", {
+    openAiKeyPresent: !!openAiKey,
+    supabaseUrlPresent: !!supabaseUrl,
+    anonKeyPresent: !!anonKey,
+  });
+
   return json({
     ok: false,
-    error: "AI service is not configured. Check the OpenAI API key and Supabase environment variables."
+    error: "AI service configuration is incomplete. Check the function logs."
   }, 503);
 }
   try {
