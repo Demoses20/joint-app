@@ -70,32 +70,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: false, error: "Use POST." }, 405);
   const openAiKey = Deno.env.get("OPENAI_API_KEY");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-
-let anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-
-if (!anonKey) {
-  try {
-    const publishableKeys = JSON.parse(
-      Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") || "{}"
-    );
-    anonKey = publishableKeys.default || "";
-  } catch {
-    anonKey = "";
-  }
-}
-
-if (!openAiKey || !supabaseUrl || !anonKey) {
-  console.error("JOINT AI configuration check:", {
-    openAiKeyPresent: !!openAiKey,
-    supabaseUrlPresent: !!supabaseUrl,
-    anonKeyPresent: !!anonKey,
-  });
-
-  return json({
-    ok: false,
-    error: "AI service configuration is incomplete. Check the function logs."
-  }, 503);
-}
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!openAiKey || !supabaseUrl || !anonKey) return json({ ok: false, error: "AI service is not configured. The administrator must set OPENAI_API_KEY and deploy the JOINT AI function." }, 503);
   try {
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace(/^Bearer\s+/i, "");
