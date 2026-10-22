@@ -40,6 +40,25 @@ Deno.serve(async (req) => {
         return json({ ok: false, error: "Join or enroll in this course before using its AI tutor." }, 403, origin);
       }
     }
+    // Enforce JOINT-wide AI availability. For approved school/institute-hosted courses,
+    // require an active wallet with sufficient points and record every successful turn.
+    const { data: lessonPointSettings, error: lessonSettingsError } = await db.from("joint_ai_point_settings")
+      .select("points_per_ai_start,is_enabled").eq("id", true).maybeSingle();
+    if (lessonSettingsError || !lessonPointSettings) return json({ ok: false, error: "AI Points settings are unavailable. Contact the JOINT main administrator." }, 503, origin);
+    if (lessonPointSettings.is_enabled === false) return json({ ok: false, error: "AI teaching is temporarily disabled by the JOINT main administrator. Please use human-mode lessons." }, 403, origin);
+    let lessonPointOwnerId: string | null = null;
+    let lessonPointCost = Math.max(1, Number(lessonPointSettings.points_per_ai_start) || 1);
+    const { data: pointSchool, error: pointSchoolError } = await db.from("joint_school_host_applications")
+      .select("owner_id,status").eq("owner_id", course.owner_id).eq("status", "approved").order("updated_at", { ascending: false }).limit(1).maybeSingle();
+    if (pointSchoolError) return json({ ok: false, error: "Could not verify the AI Points workspace for this course." }, 500, origin);
+    if (pointSchool) {
+      lessonPointOwnerId = String(pointSchool.owner_id);
+      const { data: pointWallet, error: pointWalletError } = await db.from("joint_ai_point_wallets")
+        .select("owner_id,balance,is_active").eq("owner_id", lessonPointOwnerId).maybeSingle();
+      if (pointWalletError) return json({ ok: false, error: "Could not load the AI Points wallet." }, 500, origin);
+      if (!pointWallet || pointWallet.is_active === false) return json({ ok: false, error: "AI Points are deactivated for this school/institute. Ask the host to activate AI Points or continue in human mode." }, 403, origin);
+      if (Number(pointWallet.balance || 0) < lessonPointCost) return json({ ok: false, error: `Insufficient AI Points. This lesson request requires ${lessonPointCost} point(s). Please ask the host to purchase points or use human mode.` }, 402, origin);
+    }
     const modules = Array.isArray(course.content?.modules) ? course.content.modules : [];
     let found: any = null;
     for (const mod of modules) {
@@ -92,11 +111,26 @@ Deno.serve(async (req) => {
     const raw = Array.isArray(aiData.output) ? aiData.output.flatMap((item: any) => Array.isArray(item.content) ? item.content.filter((c: any) => c.type === "output_text").map((c: any) => c.text) : []).join("\n").trim() : "";
     let teaching: any;
     try { teaching = JSON.parse(raw); } catch { return json({ ok: false, error: "The AI teacher returned an unreadable response. Please try again." }, 502, origin); }
+    let pointsCharged = 0, pointBalance: number | null = null;
+    if (lessonPointOwnerId) {
+      const requestId = String(body.requestId || crypto.randomUUID()).slice(0, 120);
+      const { data: debit, error: debitError } = await db.rpc("joint_spend_ai_points", {
+        p_owner_id: lessonPointOwnerId, p_actor_user_id: auth.user.id, p_points: lessonPointCost,
+        p_source: "learning_studio", p_source_id: `${courseId}:${lessonId}:${requestId}`,
+        p_idempotency_key: `lesson:${auth.user.id}:${requestId}`, p_description: `AI lesson ${action}: ${String(lesson.title || lessonId).slice(0, 160)}`
+      });
+      if (debitError || !debit?.ok) {
+        console.error("AI lesson points debit failed", debitError?.message || debit?.error);
+        return json({ ok: false, error: debit?.error === "insufficient_balance" ? "Your AI Points balance changed during this request. Please try again." : "The AI response was generated, but the AI Points transaction could not be confirmed. Contact JOINT support before retrying." }, debit?.error === "insufficient_balance" ? 402 : 500, origin);
+      }
+      pointsCharged = lessonPointCost; pointBalance = Number(debit.balance);
+    }
     return json({ ok: true, message: String(teaching.message || "Let's continue with the lesson.").slice(0, 12000),
       question: teaching.question || null, assignment: teaching.assignment || null,
       score: typeof teaching.score === "number" ? Math.max(0, Math.min(100, teaching.score)) : null,
       activityType: ["quiz","assignment","question_answer"].includes(teaching.activityType) ? teaching.activityType : null,
       feedback: String(teaching.feedback || "").slice(0, 3000), finished: !!teaching.finished, media: [],
+      points_charged: pointsCharged, balance: pointBalance,
       audioBase64: null, audioMime: null, model: Deno.env.get("JOINT_AI_MODEL") || Deno.env.get("OPENAI_MODEL") || "gpt-4o-mini"
     }, 200, origin);
   }
@@ -107,12 +141,14 @@ Deno.serve(async (req) => {
   const { data: school, error: schoolError } = await db.from("joint_school_host_applications").select("id,owner_id,school_name,status").eq("owner_id", auth.user.id).eq("status", "approved").order("updated_at", { ascending: false }).limit(1).maybeSingle();
   if (schoolError) return json({ error: "Could not verify your school workspace." }, 500, origin);
   if (!school) return json({ error: "An approved school/institute workspace is required to use these tools." }, 403, origin);
-  const { data: settings, error: settingsError } = await db.from("joint_ai_point_settings").select("points_per_ai_start").eq("id", true).maybeSingle();
+  const { data: settings, error: settingsError } = await db.from("joint_ai_point_settings").select("points_per_ai_start,is_enabled").eq("id", true).maybeSingle();
   if (settingsError || !settings) return json({ error: "AI Points settings are unavailable. Contact the administrator." }, 500, origin);
+  if (settings.is_enabled === false) return json({ error: "AI services are temporarily disabled by the JOINT main administrator." }, 403, origin);
   const cost = Math.max(1, Number(settings.points_per_ai_start) || 1);
-  const { data: wallet, error: walletError } = await db.from("joint_ai_point_wallets").select("owner_id,balance,lifetime_spent").eq("owner_id", school.owner_id).maybeSingle();
+  const { data: wallet, error: walletError } = await db.from("joint_ai_point_wallets").select("owner_id,balance,lifetime_spent,is_active").eq("owner_id", school.owner_id).maybeSingle();
   if (walletError) return json({ error: "Could not load the AI Points wallet." }, 500, origin);
-  if (!wallet || Number(wallet.balance) < cost) return json({ error: `Insufficient AI Points. This action requires ${cost} point(s).` }, 402, origin);
+  if (!wallet || wallet.is_active === false) return json({ error: "AI Points are deactivated for this school/institute. Activate AI Points or use human mode." }, 403, origin);
+  if (Number(wallet.balance) < cost) return json({ error: `Insufficient AI Points. This action requires ${cost} point(s).` }, 402, origin);
   const instructions: Record<string, string> = {
     teacher: "You are JOINT AI Teacher. Explain clearly and accurately for a student, using examples and a helpful follow-up question when appropriate.",
     lesson: "Create a structured, classroom-ready lesson with learning objectives, prerequisite knowledge, explanation, examples, activities, and a short recap.",
