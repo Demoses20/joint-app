@@ -16,9 +16,10 @@ Deno.serve(async (req) => {
   const db = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ error: "Invalid request body." }, 400, origin); }
-  const task = String(body.task || ""), prompt = String(body.prompt || "").trim();
+  const task = String(body.task || ""), prompt = String(body.prompt || "").trim(), imageDataUrl = typeof body.image_data_url === "string" ? body.image_data_url : "";
   if (!["teacher", "lesson", "quiz", "mark"].includes(task)) return json({ error: "Choose a supported AI task." }, 400, origin);
-  if (!prompt || prompt.length > 20000) return json({ error: "Enter content between 1 and 20,000 characters." }, 400, origin);
+  if ((!prompt && !imageDataUrl) || prompt.length > 20000) return json({ error: "Enter a question or attach an image. Text must be 20,000 characters or fewer." }, 400, origin);
+  if (imageDataUrl && (!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(imageDataUrl) || imageDataUrl.length > 11500000)) return json({ error: "Unsupported image or image too large. Use PNG, JPEG, WEBP or GIF under 8 MB." }, 400, origin);
   const { data: school, error: schoolError } = await db.from("joint_school_host_applications").select("id,owner_id,school_name,status").eq("owner_id", auth.user.id).eq("status", "approved").order("updated_at", { ascending: false }).limit(1).maybeSingle();
   if (schoolError) return json({ error: "Could not verify your school workspace." }, 500, origin);
   if (!school) return json({ error: "An approved school/institute workspace is required to use these tools." }, 403, origin);
@@ -35,7 +36,7 @@ Deno.serve(async (req) => {
     mark: "Assess the student's work against the assignment or rubric. Suggest a score out of 100, explain strengths and corrections, and provide constructive feedback. State that the teacher makes the final decision."
   };
   let response: Response;
-  try { response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: Deno.env.get("OPENAI_MODEL") || "gpt-4.1-mini", instructions: instructions[task], input: prompt, max_output_tokens: 2200 }) }); }
+  try { response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: Deno.env.get("OPENAI_MODEL") || "gpt-4.1-mini", instructions: instructions[task], input: [{ role: "user", content: [{ type: "input_text", text: prompt || "Read the attached image and help the learner." }, ...(imageDataUrl ? [{ type: "input_image", image_url: imageDataUrl }] : [])] }], max_output_tokens: 2200 }) }); }
   catch { return json({ error: "Could not connect to AI. No points were deducted." }, 502, origin); }
   const data: any = await response.json().catch(() => ({}));
   if (!response.ok) { console.error("OpenAI request failed", data?.error?.code || response.status); return json({ error: "AI could not complete the request. No points were deducted." }, 502, origin); }
