@@ -1,2 +1,5 @@
 [functions.joint-ai-teach]
 verify_jwt = false
+
+[functions.joint-ai-points-]
+verify_jwt = false
