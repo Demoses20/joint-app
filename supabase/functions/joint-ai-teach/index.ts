@@ -6,85 +6,106 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const paystackSecret = Deno.env.get("PAYSTACK_SECRET_KEY");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (req.method !== "POST") return json({ error: "POST required" }, 405);
-  if (!paystackSecret) return json({ error: "PAYSTACK_SECRET_KEY is not configured in Supabase Edge Function secrets." }, 503);
-  try {
-    const authHeader = req.headers.get("Authorization") || "";
-    if (!authHeader.startsWith("Bearer ")) return json({ error: "Sign in is required." }, 401);
-    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } });
-    const { data: authData, error: authError } = await userClient.auth.getUser();
-    if (authError || !authData.user) return json({ error: "Your session is invalid or expired." }, 401);
-    const user = authData.user;
-    const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-    const body = await req.json();
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-    if (body.action === "initialize") {
-      if (body.purpose !== "course_enrollment" || !body.course_id) return json({ error: "This phase supports paid course enrolment checkout only." }, 400);
-      const { data: course, error: courseError } = await admin.from("joint_courses").select("id,title,price,currency,owner_id").eq("id", body.course_id).maybeSingle();
-      if (courseError) throw courseError;
-      if (!course) return json({ error: "Course not found." }, 404);
-      const price = Number(course.price);
-      const currency = String(course.currency || "USD").toUpperCase();
-      if (!Number.isFinite(price) || price <= 0) return json({ error: "This course does not have a valid paid price." }, 400);
-      if (!/^[A-Z]{3}$/.test(currency)) return json({ error: "Course currency is invalid." }, 400);
-      const existing = await admin.from("joint_course_enrollments").select("id,status").eq("user_id", user.id).eq("course_id", course.id).maybeSingle();
-      if (existing.error) throw existing.error;
-      if (existing.data && ["enrolled", "completed", "joined"].includes(String(existing.data.status).toLowerCase())) return json({ error: "You already have access to this course." }, 409);
-      const callbackUrl = new URL(String(body.callback_url || ""));
-      const allowedHosts = (Deno.env.get("PAYSTACK_CALLBACK_HOSTS") || "myjointapp.com,www.myjointapp.com").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-      if (callbackUrl.protocol !== "https:" || !allowedHosts.includes(callbackUrl.hostname.toLowerCase())) return json({ error: "Checkout callback URL is not an approved JOINT domain." }, 400);
-      const reference = `joint_${crypto.randomUUID().replaceAll("-", "")}`;
-      const amount = Math.round(price * 100);
-      const { error: pendingError } = await admin.from("joint_paystack_transactions").insert({ reference, user_id: user.id, purpose: "course_enrollment", course_id: course.id, course_owner_id: course.owner_id || null, amount_minor: amount, currency, status: "pending" });
-      if (pendingError) throw pendingError;
-      const initResponse = await fetch("https://api.paystack.co/transaction/initialize", {
-        method: "POST", headers: { Authorization: `Bearer ${paystackSecret}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email, amount, currency, reference, callback_url: callbackUrl.toString(), metadata: { joint_user_id: user.id, purpose: "course_enrollment", course_id: course.id, course_title: course.title } }),
-      });
-      const result = await initResponse.json();
-      if (!initResponse.ok || !result.status || !result.data?.authorization_url) {
-        await admin.from("joint_paystack_transactions").update({ status: "initialization_failed", gateway_response: result }).eq("reference", reference);
-        return json({ error: result.message || "Paystack could not initialize checkout. Confirm currency and account eligibility." }, 502);
-      }
-      await admin.from("joint_paystack_transactions").update({ access_code: result.data.access_code }).eq("reference", reference);
-      return json({ authorization_url: result.data.authorization_url, reference, amount_minor: amount, currency });
-    }
-
-    if (body.action === "verify") {
-      const reference = String(body.reference || "");
-      if (!/^joint_[a-f0-9]{32}$/.test(reference)) return json({ error: "Invalid transaction reference." }, 400);
-      const { data: tx, error: txError } = await admin.from("joint_paystack_transactions").select("*").eq("reference", reference).eq("user_id", user.id).maybeSingle();
-      if (txError) throw txError;
-      if (!tx) return json({ error: "Transaction not found for this account." }, 404);
-      if (tx.status === "paid") return json({ paid: true, reference, message: "Payment was already verified." });
-      const verifyResponse = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${paystackSecret}` } });
-      const verified = await verifyResponse.json();
-      if (!verifyResponse.ok || !verified.status || verified.data?.status !== "success") {
-        await admin.from("joint_paystack_transactions").update({ status: "verification_pending", gateway_response: verified }).eq("reference", reference).eq("user_id", user.id);
-        return json({ paid: false, message: "Paystack has not confirmed a successful payment. Course access remains locked." }, 200);
-      }
-      const paid = verified.data;
-      if (Number(paid.amount) !== Number(tx.amount_minor) || String(paid.currency).toUpperCase() !== String(tx.currency).toUpperCase()) return json({ error: "Verified payment amount or currency does not match the transaction. Access was not granted." }, 409);
-      const { error: paidError } = await admin.from("joint_paystack_transactions").update({ status: "paid", paid_at: new Date().toISOString(), gateway_transaction_id: String(paid.id), gateway_response: { status: paid.status, channel: paid.channel, paid_at: paid.paid_at } }).eq("reference", reference).eq("user_id", user.id).neq("status", "paid");
-      if (paidError) throw paidError;
-      const { error: enrollmentError } = await admin.from("joint_course_enrollments").upsert({ user_id: user.id, course_id: tx.course_id, status: "enrolled" }, { onConflict: "user_id,course_id" });
-      if (enrollmentError) {
-        await admin.from("joint_paystack_transactions").update({ status: "paid_fulfillment_pending" }).eq("reference", reference).eq("user_id", user.id);
-        throw new Error("Payment is verified, but course access could not be updated. Contact JOINT support with reference " + reference + ". Details: " + enrollmentError.message);
-      }
-      await admin.from("joint_user_notifications").insert({ user_id: user.id, title: "Course payment confirmed", body: "Your payment for " + String(paid.metadata?.course_title || "the course") + " was verified. You can now access the course.", category: "payment", is_read: false, action_url: "classes.html?course=" + encodeURIComponent(String(tx.course_id)) });
-      return json({ paid: true, reference, course_id: tx.course_id, message: "Payment verified and course access granted." });
-    }
-    return json({ error: "Unsupported action." }, 400);
-  } catch (error) {
-    console.error("joint-paystack-checkout error", error);
-    return json({ error: error instanceof Error ? error.message : "Unexpected payment service error." }, 500);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const paystackKey = Deno.env.get("JOINT_PAYSTACK_SECRET_KEY");
+  if (!supabaseUrl || !anonKey || !serviceKey || !paystackKey) {
+    return json({ error: "Server configuration incomplete. Check Supabase defaults and JOINT_PAYSTACK_SECRET_KEY." }, 500);
   }
+
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return json({ error: "Sign in to continue." }, 401);
+  const authClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token}` } } });
+  const { data: authData, error: authError } = await authClient.auth.getUser(token);
+  const user = authData?.user;
+  if (authError || !user) return json({ error: "Your session is invalid or expired. Sign in again." }, 401);
+
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  let body: Record<string, unknown>;
+  try { body = await req.json(); } catch { return json({ error: "Invalid JSON body." }, 400); }
+  const action = String(body.action || "");
+
+  if (action === "initialize") {
+    if (body.purpose !== "course_enrollment") return json({ error: "Unsupported payment purpose." }, 400);
+    const courseId = String(body.course_id || "").trim();
+    if (!courseId) return json({ error: "course_id is required." }, 400);
+    const { data: course, error: courseError } = await admin.from("joint_courses").select("id,title,price,currency,status").eq("id", courseId).maybeSingle();
+    if (courseError) return json({ error: "Could not load course details." }, 500);
+    if (!course || String(course.status || "").toLowerCase() !== "published") return json({ error: "This course is not available for enrolment." }, 404);
+    const price = Number(course.price);
+    if (!Number.isFinite(price) || price <= 0) return json({ error: "This checkout is only for paid courses." }, 400);
+    const currency = String(course.currency || "NGN").toUpperCase();
+    // Paystack amount uses the currency's minor unit. Currency availability depends on the merchant's country and activation.
+    const amount = Math.round(price * 100);
+    if (!Number.isSafeInteger(amount) || amount <= 0) return json({ error: "Invalid course price." }, 400);
+    const suppliedCallback = String(body.callback_url || "");
+    let callbackUrl: string;
+    try {
+      const parsed = new URL(suppliedCallback);
+      const allowedHosts = new Set(["myjointapp.com", "www.myjointapp.com"]);
+      if (parsed.protocol !== "https:" || !allowedHosts.has(parsed.hostname) || parsed.pathname !== "/classes.html") throw new Error("invalid callback");
+      callbackUrl = parsed.href;
+    } catch { return json({ error: "Invalid callback URL. Use the official JOINT classes page over HTTPS." }, 400); }
+
+    const reference = `joint_${crypto.randomUUID().replaceAll("-", "")}`;
+    const txInsert = await admin.from("joint_paystack_transactions").insert({
+      reference, user_id: user.id, purpose: "course_enrollment", course_id: course.id,
+      amount_minor: amount, currency, status: "initializing", course_title: course.title || "Course"
+    });
+    if (txInsert.error) return json({ error: "Could not create payment record. Apply the included SQL migration and retry." }, 500);
+
+    const response = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${paystackKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: user.email, amount, currency, reference, callback_url: callbackUrl, metadata: { app: "JOINT", user_id: user.id, course_id: course.id, purpose: "course_enrollment" } })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.status || !result.data?.authorization_url) {
+      await admin.from("joint_paystack_transactions").update({ status: "initialization_failed", provider_message: String(result.message || "Paystack initialization failed").slice(0, 500) }).eq("reference", reference);
+      return json({ error: result.message || "Paystack could not initialize this payment. Confirm currency and merchant activation." }, 400);
+    }
+    await admin.from("joint_paystack_transactions").update({ status: "pending", access_code: result.data.access_code || null }).eq("reference", reference);
+    return json({ authorization_url: result.data.authorization_url, reference });
+  }
+
+  if (action === "verify") {
+    const reference = String(body.reference || "").trim();
+    if (!reference || !/^joint_[a-f0-9]{32}$/.test(reference)) return json({ error: "Invalid JOINT payment reference." }, 400);
+    const { data: tx, error: txError } = await admin.from("joint_paystack_transactions").select("*").eq("reference", reference).maybeSingle();
+    if (txError || !tx) return json({ error: "Payment reference was not found." }, 404);
+    if (tx.user_id !== user.id) return json({ error: "This payment does not belong to your account." }, 403);
+    if (tx.status === "success") return json({ paid: true, reference, course_id: tx.course_id, message: "Payment was already verified." });
+
+    const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${paystackKey}` } });
+    const result = await response.json().catch(() => ({}));
+    const paid = response.ok && result.status === true && result.data?.status === "success" && Number(result.data?.amount) === Number(tx.amount_minor) && String(result.data?.currency || "").toUpperCase() === String(tx.currency).toUpperCase() && String(result.data?.reference) === reference;
+    if (!paid) {
+      await admin.from("joint_paystack_transactions").update({ status: result.data?.status === "failed" ? "failed" : "pending", provider_message: String(result.message || result.data?.gateway_response || "Payment not verified").slice(0, 500) }).eq("reference", reference);
+      return json({ paid: false, message: "Paystack has not confirmed a successful payment. Course access remains locked." }, 200);
+    }
+
+    // Grant access only after the provider's server-side verification succeeds.
+    const { data: existing, error: enrollmentLookupError } = await admin.from("joint_course_enrollments").select("id,status").eq("user_id", user.id).eq("course_id", tx.course_id).maybeSingle();
+    if (enrollmentLookupError) return json({ error: "Payment verified, but enrolment could not be updated. Contact JOINT support with reference " + reference }, 500);
+    let enrollmentError: { message: string } | null = null;
+    if (existing?.id) {
+      const updated = await admin.from("joint_course_enrollments").update({ status: "enrolled" }).eq("id", existing.id);
+      enrollmentError = updated.error;
+    } else {
+      const inserted = await admin.from("joint_course_enrollments").insert({ user_id: user.id, course_id: tx.course_id, status: "enrolled" });
+      enrollmentError = inserted.error;
+    }
+    if (enrollmentError) return json({ error: "Payment verified, but enrolment could not be updated. Contact JOINT support with reference " + reference }, 500);
+    const updateTx = await admin.from("joint_paystack_transactions").update({ status: "success", paid_at: new Date().toISOString(), provider_transaction_id: String(result.data.id || "") }).eq("reference", reference);
+    if (updateTx.error) return json({ error: "Payment verified and access granted, but the payment log needs reconciliation. Reference: " + reference }, 500);
+    return json({ paid: true, reference, course_id: tx.course_id, message: "Payment verified and course access granted." });
+  }
+  return json({ error: "Unsupported action." }, 400);
 });
