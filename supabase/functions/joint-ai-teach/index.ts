@@ -16,6 +16,90 @@ Deno.serve(async (req) => {
   const db = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ error: "Invalid request body." }, 400, origin); }
+  // Learning Studio teaching requests use action=start|answer and must remain
+  // compatible with classes-learning-backend.js. Keep this endpoint name unchanged.
+  if (body.action === "start" || body.action === "answer") {
+    const action = body.action;
+    const courseId = String(body.courseId || "").slice(0, 100);
+    const lessonId = String(body.lessonId || "").slice(0, 100);
+    const studentResponse = String(body.studentResponse || "").slice(0, 8000);
+    const studentImage = typeof body.studentImageDataUrl === "string" ? body.studentImageDataUrl : "";
+    if (!courseId || !lessonId) return json({ ok: false, error: "Course and lesson identifiers are required." }, 400, origin);
+    if (studentImage && (!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(studentImage) || studentImage.length > 11500000)) {
+      return json({ ok: false, error: "Unsupported image or photo too large. Use PNG, JPEG, WEBP or GIF under 8 MB." }, 400, origin);
+    }
+    const { data: course, error: courseError } = await userDb.from("joint_courses")
+      .select("id,owner_id,title,status,content").eq("id", courseId).maybeSingle();
+    if (courseError || !course) return json({ ok: false, error: "Course unavailable. Check course access and Supabase row-level security policies." }, 403, origin);
+    const isOwner = String(course.owner_id) === String(auth.user.id);
+    if (!isOwner) {
+      if (String(course.status || "").toLowerCase() !== "published") return json({ ok: false, error: "This course is not published." }, 403, origin);
+      const { data: enrollment, error: enrollmentError } = await userDb.from("joint_course_enrollments")
+        .select("status").eq("course_id", courseId).eq("user_id", auth.user.id).maybeSingle();
+      if (enrollmentError || !enrollment || !["joined","enrolled","completed","paid","received"].includes(String(enrollment.status || "").toLowerCase())) {
+        return json({ ok: false, error: "Join or enroll in this course before using its AI tutor." }, 403, origin);
+      }
+    }
+    const modules = Array.isArray(course.content?.modules) ? course.content.modules : [];
+    let found: any = null;
+    for (const mod of modules) {
+      for (const item of (Array.isArray(mod?.lessons) ? mod.lessons : [])) {
+        if (String(item?.id) === lessonId) { found = { lesson: item, module: mod }; break; }
+      }
+      if (found) break;
+    }
+    if (!found) return json({ ok: false, error: "This lesson could not be found in the saved course. Save and publish the latest course first." }, 404, origin);
+    const lesson = found.lesson, aiSettings = lesson.aiSettings || {};
+    if (lesson.teachingMode !== "ai") return json({ ok: false, error: "This chapter is set to Human mode." }, 400, origin);
+    const now = Date.now();
+    if (lesson.releaseAt && new Date(lesson.releaseAt).getTime() > now) return json({ ok: false, error: "This lesson has not opened yet." }, 403, origin);
+    if (lesson.availableUntil && new Date(lesson.availableUntil).getTime() < now) return json({ ok: false, error: "This lesson has closed." }, 403, origin);
+    const blocks = Array.isArray(lesson.contentBlocks) ? lesson.contentBlocks : [];
+    const lessonText = blocks.filter((b: any) => b?.type === "text" && b?.text).map((b: any) => String(b.text).slice(0, 12000)).join("\n\n").slice(0, 24000);
+    const material = {
+      course: String(course.title || "").slice(0, 200), path: String(found.module?.title || "").slice(0, 200),
+      lesson: String(lesson.title || "").slice(0, 200), lessonNotes: String(lesson.content || "").slice(0, 16000),
+      contentBlocks: lessonText, hostInstructions: String(aiSettings.instructions || "").slice(0, 8000),
+      reviewNotes: String(aiSettings.reviewNotes || "").slice(0, 4000),
+      language: String(course.content?.course?.language || "English").slice(0, 60),
+      questionCount: Math.min(20, Math.max(0, Number(aiSettings.questionCount) || 5)),
+      questionStyle: String(aiSettings.questionStyle || "mixed").slice(0, 60),
+      assignmentType: String(aiSettings.assignmentType || "written").slice(0, 60),
+      passScore: Number(lesson.progression?.passScore ?? 70)
+    };
+    const history = Array.isArray(body.history) ? body.history.slice(-12).map((m: any) => ({
+      role: m?.role === "assistant" ? "assistant" : "user", content: String(m?.content || "").slice(0, 3000)
+    })) : [];
+    const teachingInstructions = `You are JOINT's patient, age-appropriate AI teacher. Teach based on the saved lesson material and host instructions; follow their language, teaching style and pace. The student may send text or a photo of a handwritten answer, question, worksheet, or diagram. Read the image carefully, explain what you can identify, and if unclear ask for a clearer photo. Evaluate a submitted answer kindly and accurately, provide a score from 0-100 only when the student has answered a question or submitted work, and give actionable feedback. Do not invent course facts beyond the provided lesson. Return ONLY valid JSON with keys: message (string), question (null or {type:"multiple_choice"|"short_answer",prompt:string,options?:string[]}), assignment (null or {title:string,instructions:string}), score (number 0-100 or null), activityType ("quiz"|"assignment"|"question_answer" or null), feedback (string or null), finished (boolean), media (array, normally empty). For action=start, begin teaching with a concise introduction, one learning step, and a learner question unless questionCount is 0. For action=answer, respond to the student's answer/question/photo and continue the lesson. Never expose an answer key in a question. Never claim an assignment was submitted to the teacher. Saved course material: ${JSON.stringify(material)}`;
+    const userText = JSON.stringify({ action, studentResponse, conversation: history, memory: String(body.memory || "").slice(0, 1200) });
+    const content: any[] = [{ type: "input_text", text: userText }];
+    if (studentImage) content.push({ type: "input_image", image_url: studentImage });
+    let aiResponse: Response;
+    try {
+      aiResponse = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: Deno.env.get("JOINT_AI_MODEL") || Deno.env.get("OPENAI_MODEL") || "gpt-4o-mini",
+          instructions: teachingInstructions, input: [{ role: "user", content }], max_output_tokens: 3000 })
+      });
+    } catch {
+      return json({ ok: false, error: "Could not connect to the AI teacher. No answer was sent." }, 502, origin);
+    }
+    const aiData: any = await aiResponse.json().catch(() => ({}));
+    if (!aiResponse.ok) {
+      console.error("JOINT AI teaching provider error", aiData?.error?.code || aiResponse.status);
+      return json({ ok: false, error: aiData?.error?.message || "The AI teacher could not complete this request." }, 502, origin);
+    }
+    const raw = Array.isArray(aiData.output) ? aiData.output.flatMap((item: any) => Array.isArray(item.content) ? item.content.filter((c: any) => c.type === "output_text").map((c: any) => c.text) : []).join("\n").trim() : "";
+    let teaching: any;
+    try { teaching = JSON.parse(raw); } catch { return json({ ok: false, error: "The AI teacher returned an unreadable response. Please try again." }, 502, origin); }
+    return json({ ok: true, message: String(teaching.message || "Let's continue with the lesson.").slice(0, 12000),
+      question: teaching.question || null, assignment: teaching.assignment || null,
+      score: typeof teaching.score === "number" ? Math.max(0, Math.min(100, teaching.score)) : null,
+      activityType: ["quiz","assignment","question_answer"].includes(teaching.activityType) ? teaching.activityType : null,
+      feedback: String(teaching.feedback || "").slice(0, 3000), finished: !!teaching.finished, media: [],
+      audioBase64: null, audioMime: null, model: Deno.env.get("JOINT_AI_MODEL") || Deno.env.get("OPENAI_MODEL") || "gpt-4o-mini"
+    }, 200, origin);
+  }
   const task = String(body.task || ""), prompt = String(body.prompt || "").trim(), imageDataUrl = typeof body.image_data_url === "string" ? body.image_data_url : "";
   if (!["teacher", "lesson", "quiz", "mark"].includes(task)) return json({ error: "Choose a supported AI task." }, 400, origin);
   if ((!prompt && !imageDataUrl) || prompt.length > 20000) return json({ error: "Enter a question or attach an image. Text must be 20,000 characters or fewer." }, 400, origin);
