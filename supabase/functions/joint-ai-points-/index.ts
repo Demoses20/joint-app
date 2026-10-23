@@ -154,9 +154,18 @@ Deno.serve(async (req) => {
         p_amount_minor: purchase.amount_minor, p_currency: purchase.currency, p_reference: reference,
         p_description: `Paystack AI Points purchase (${purchase.points} points)`
       });
-      if (creditError || !credited?.ok) throw creditError || new Error(credited?.error || "Could not credit AI Points.");
+      if (creditError) {
+        console.error("AI Points credit RPC failed", JSON.stringify({ code: creditError.code, message: creditError.message, details: creditError.details, hint: creditError.hint }));
+        throw new Error(`Payment was confirmed by Paystack, but wallet crediting failed (${creditError.code || "database_error"}). Keep this reference and retry verification; do not pay again.`);
+      }
+      if (!credited?.ok) throw new Error(`Payment was confirmed by Paystack, but wallet crediting was not completed (${text(credited?.error || "credit_failed", 120)}). Retry verification; do not pay again.`);
       const { error: updateError } = await db.from("joint_ai_point_purchases").update({ status: "paid", paid_at: new Date().toISOString(), paystack_transaction_id: String(tx.id || ""), updated_at: new Date().toISOString() }).eq("reference", reference).eq("owner_id", ownerId);
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("AI Points purchase status update failed", updateError.message);
+        // The atomic ledger entry is idempotent by Paystack reference. A retry will
+        // detect the ledger credit and safely finish marking the purchase as paid.
+        throw new Error("Points credit was recorded, but purchase status could not be refreshed. Reload this page to reconcile the payment.");
+      }
       return json({ ok: true, paid: true, duplicate: !!credited.duplicate, balance: credited.balance, points: purchase.points, currency: purchase.currency }, 200, origin);
     }
     return json({ ok: false, error: "Unknown AI Points action." }, 400, origin);
