@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'supabase/functions/joint-ai-points-/**'
+      - 'supabase/supabase/functions/joint-ai-points-/**'
       - '.github/workflows/deploy-ai-points.yml'
   workflow_dispatch:
 
