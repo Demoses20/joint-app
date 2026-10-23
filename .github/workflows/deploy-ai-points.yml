@@ -5,7 +5,7 @@ push:
 branches:
 - main
 paths:
-- 'supabase/supabase/functions/joint-ai-points-/index.ts'
+- 'supabase/supabase/functions/joint-ai-points-/**'
 - '.github/workflows/deploy-ai-points.yml'
 workflow_dispatch:
 
@@ -32,7 +32,7 @@ steps:
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
     run: |
       if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_PROJECT_ID" ]; then
-        echo "Required Supabase GitHub secrets are missing."
+        echo "Required Supabase secrets are missing."
         exit 1
       fi
       supabase functions deploy joint-ai-points- --project-ref "$SUPABASE_PROJECT_ID"
