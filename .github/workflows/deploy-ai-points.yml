@@ -42,6 +42,15 @@ jobs:
             exit 1
           fi
 
+      - name: Verify function files
+        working-directory: ./supabase
+        shell: bash
+        run: |
+          echo "Checking Supabase function directory..."
+          pwd
+          ls -la supabase/functions/joint-ai-points-/
+          test -f supabase/functions/joint-ai-points-/index.ts
+
       - name: Deploy AI Points Edge Function
         working-directory: ./supabase
         run: |
