@@ -39,5 +39,6 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy AI Points Edge Function
+            - name: Deploy AI Points Edge Function
+        working-directory: ./supabase
         run: supabase functions deploy joint-ai-points- --project-ref "$SUPABASE_PROJECT_ID"
