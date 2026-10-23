@@ -1,11 +1,11 @@
 name: Deploy JOINT AI Points Edge Function
 
-on:
+'on':
 push:
 branches:
 - main
 paths:
-- 'supabase/supabase/functions/joint-ai-points-/**'
+- 'supabase/supabase/functions/joint-ai-points-/index.ts'
 - '.github/workflows/deploy-ai-points.yml'
 workflow_dispatch:
 
@@ -16,10 +16,6 @@ jobs:
 deploy-ai-points:
 runs-on: ubuntu-latest
 
-env:
-  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-  SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-
 steps:
   - name: Check out repository
     uses: actions/checkout@v4
@@ -29,19 +25,14 @@ steps:
     with:
       version: latest
 
-  - name: Check required GitHub secrets
-    shell: bash
-    run: |
-      if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
-        echo "Missing GitHub Actions secret: SUPABASE_ACCESS_TOKEN"
-        exit 1
-      fi
-
-      if [ -z "$SUPABASE_PROJECT_ID" ]; then
-        echo "Missing GitHub Actions secret: SUPABASE_PROJECT_ID"
-        exit 1
-      fi
-
   - name: Deploy AI Points Edge Function
     working-directory: ./supabase
-    run: supabase functions deploy joint-ai-points- --project-ref "$SUPABASE_PROJECT_ID"
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    run: |
+      if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_PROJECT_ID" ]; then
+        echo "Required Supabase GitHub secrets are missing."
+        exit 1
+      fi
+      supabase functions deploy joint-ai-points- --project-ref "$SUPABASE_PROJECT_ID"
