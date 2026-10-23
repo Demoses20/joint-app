@@ -15,7 +15,7 @@ const json = (body: unknown, status = 200, origin: string | null = null) => new 
 const text = (v: unknown, max = 200) => String(v ?? "").trim().slice(0, max);
 const safeNum = (v: unknown, min: number, max: number) => Number.isSafeInteger(Number(v)) && Number(v) >= min && Number(v) <= max ? Number(v) : null;
 const getSettings = async (db: any) => {
-  const { data, error } = await db.from("joint_ai_point_settings").select("id,points_per_ai_start,price_per_point_minor,currency,is_enabled").eq("id", true).maybeSingle();
+  const { data, error } = await db.from("joint_ai_point_settings").select("id,points_per_ai_start,price_per_point_minor,currency,is_enabled,text_words_per_point,points_per_image,voice_seconds_per_point,video_frames_per_point,voice_note_seconds_per_point").eq("id", true).maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("AI Points pricing is not configured. Ask the JOINT main administrator to save the pricing settings.");
   return data;
@@ -67,8 +67,13 @@ Deno.serve(async (req) => {
         const pointsPerAction = safeNum(body.points_per_ai_start, 1, 10000);
         const price = safeNum(body.price_per_point_minor, 0, 1000000000);
         const currency = text(body.currency, 3).toUpperCase();
-        if (pointsPerAction === null || price === null || !CURRENCIES.has(currency) || typeof body.is_enabled !== "boolean") return json({ ok: false, error: "Enter a valid point cost, non-negative point price, supported Paystack currency and AI availability setting." }, 400, origin);
-        const { data, error } = await db.from("joint_ai_point_settings").upsert({ id: true, points_per_ai_start: pointsPerAction, price_per_point_minor: price, currency, is_enabled: body.is_enabled, updated_at: new Date().toISOString() }, { onConflict: "id" }).select("id,points_per_ai_start,price_per_point_minor,currency,is_enabled").single();
+        const wordsPerPoint = safeNum(body.text_words_per_point, 1, 1000000);
+        const pointsPerImage = safeNum(body.points_per_image, 0, 1000000);
+        const voiceSecondsPerPoint = safeNum(body.voice_seconds_per_point, 1, 86400);
+        const videoFramesPerPoint = safeNum(body.video_frames_per_point, 1, 1000000);
+        const voiceNoteSecondsPerPoint = safeNum(body.voice_note_seconds_per_point, 1, 86400);
+        if (pointsPerAction === null || price === null || !CURRENCIES.has(currency) || typeof body.is_enabled !== "boolean" || wordsPerPoint === null || pointsPerImage === null || voiceSecondsPerPoint === null || videoFramesPerPoint === null || voiceNoteSecondsPerPoint === null) return json({ ok: false, error: "Enter valid AI point rates, a non-negative point price, a supported Paystack currency and an AI availability setting." }, 400, origin);
+        const { data, error } = await db.from("joint_ai_point_settings").upsert({ id: true, points_per_ai_start: pointsPerAction, price_per_point_minor: price, currency, is_enabled: body.is_enabled, text_words_per_point: wordsPerPoint, points_per_image: pointsPerImage, voice_seconds_per_point: voiceSecondsPerPoint, video_frames_per_point: videoFramesPerPoint, voice_note_seconds_per_point: voiceNoteSecondsPerPoint, updated_at: new Date().toISOString() }, { onConflict: "id" }).select("id,points_per_ai_start,price_per_point_minor,currency,is_enabled,text_words_per_point,points_per_image,voice_seconds_per_point,video_frames_per_point,voice_note_seconds_per_point").single();
         if (error) throw error;
         return json({ ok: true, settings: data }, 200, origin);
       }
