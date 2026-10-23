@@ -5,7 +5,7 @@ name: Deploy JOINT AI Points Edge Function
     branches:
       - main
     paths:
-      - 'supabase/supabase/functions/joint-ai-points-/**'
+      - 'supabase/functions/joint-ai-points-/**'
       - '.github/workflows/deploy-ai-points.yml'
   workflow_dispatch:
 
@@ -43,7 +43,6 @@ jobs:
           fi
 
       - name: Verify function files
-        working-directory: ./supabase
         shell: bash
         run: |
           echo "Checking Supabase function directory..."
@@ -52,7 +51,6 @@ jobs:
           test -f supabase/functions/joint-ai-points-/index.ts
 
       - name: Deploy AI Points Edge Function
-        working-directory: ./supabase
         run: |
           supabase functions deploy joint-ai-points- \
             --project-ref "$SUPABASE_PROJECT_ID"
