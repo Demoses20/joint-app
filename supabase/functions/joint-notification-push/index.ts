@@ -1,0 +1,104 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+import webpush from "npm:web-push@3.6.7";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+});
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "POST required" }, 405);
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("JOINT_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const vapidPublicKey = Deno.env.get("JOINT_VAPID_PUBLIC_KEY");
+  const vapidPrivateKey = Deno.env.get("JOINT_VAPID_PRIVATE_KEY");
+  const vapidSubject = Deno.env.get("JOINT_VAPID_SUBJECT") || "mailto:notifications@myjointapp.com";
+  if (!supabaseUrl || !serviceKey || !vapidPublicKey || !vapidPrivateKey) {
+    return json({ error: "Missing server configuration: Supabase service key and JOINT_VAPID_PUBLIC_KEY / JOINT_VAPID_PRIVATE_KEY are required." }, 500);
+  }
+  // Configure the Database Webhook Authorization header as: Bearer <same service key>.
+  const auth = req.headers.get("authorization") || "";
+  if (auth !== `Bearer ${serviceKey}`) return json({ error: "Unauthorized" }, 401);
+
+  let payload: Record<string, any>;
+  try { payload = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+  const row = payload.record && typeof payload.record === "object" ? payload.record : payload;
+  const notificationId = row.id;
+  if (!notificationId) return json({ error: "Missing notification record id" }, 400);
+
+  const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  // Read the full row so different notification producers can supply actor/entity metadata
+  // without requiring every producer to use identical optional columns.
+  const { data: notification, error: notificationError } = await db.from("joint_notifications")
+    .select("*")
+    .eq("id", notificationId).maybeSingle();
+  if (notificationError) return json({ error: "Could not read notification", details: notificationError.message }, 500);
+  if (!notification) return json({ skipped: true, reason: "Notification not found" });
+  const recipientId = notification.recipient_user_id || notification.recipient_id;
+  if (!recipientId) return json({ skipped: true, reason: "Notification has no recipient ID" });
+
+  const { data: subscriptions, error: subscriptionError } = await db.from("joint_push_subscriptions")
+    .select("id, endpoint, subscription").eq("user_id", recipientId);
+  if (subscriptionError) return json({ error: "Could not load push subscriptions", details: subscriptionError.message }, 500);
+  if (!subscriptions?.length) return json({ ok: true, sent: 0, reason: "Recipient has no registered push devices" });
+
+  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+  const siteUrl = (Deno.env.get("JOINT_SITE_URL") || "https://myjointapp.com").replace(/\/$/, "");
+  const target = String(notification.target_url || "/notifications.html");
+  const safeTarget = /^https:\/\//i.test(target) ? target : `${siteUrl}/${target.replace(/^\//, "")}`;
+  const metadata = notification.metadata && typeof notification.metadata === "object"
+    ? notification.metadata as Record<string, unknown>
+    : {};
+  const actorId = notification.actor_user_id || notification.actor_id ||
+    notification.sender_user_id || notification.from_user_id || metadata.actor_user_id ||
+    metadata.actor_id || metadata.sender_user_id || metadata.user_id;
+
+  // Prefer an explicit entity image, then the actor's real profile photo, then the app icon.
+  // Only absolute HTTP(S) image URLs are passed to the browser service worker.
+  let avatarUrl = String(
+    metadata.avatar_url || metadata.profile_image_url || metadata.profile_picture_url ||
+    metadata.logo_url || metadata.image_url || metadata.thumbnail_url || ""
+  ).trim();
+  if (actorId) {
+    const { data: actor } = await db.from("joint_profiles")
+      .select("avatar_url")
+      .eq("id", actorId)
+      .maybeSingle();
+    if (actor?.avatar_url && !avatarUrl) avatarUrl = String(actor.avatar_url).trim();
+  }
+  if (!/^https?:\/\//i.test(avatarUrl)) avatarUrl = `${siteUrl}/icons/icon-192.png`;
+
+  const pushPayload = JSON.stringify({
+    title: String(notification.title || "JOINT notification"),
+    body: String(notification.body || "You have a new notification on JOINT."),
+    url: safeTarget,
+    icon: avatarUrl,
+    image: avatarUrl,
+    notification_id: String(notification.id),
+    tag: `joint-${String(notification.id)}`,
+  });
+
+  let sent = 0;
+  let failed = 0;
+  for (const item of subscriptions) {
+    try {
+      await webpush.sendNotification(item.subscription, pushPayload, { TTL: 60 * 60 * 24 });
+      sent++;
+    } catch (error) {
+      failed++;
+      const statusCode = Number((error as any)?.statusCode || 0);
+      // Remove expired/unsubscribed endpoints; retain temporary failures for retry.
+      if (statusCode === 404 || statusCode === 410) {
+        await db.from("joint_push_subscriptions").delete().eq("id", item.id);
+      }
+      console.error("JOINT push send failed", { subscriptionId: item.id, statusCode, message: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  return json({ ok: true, sent, failed, total: subscriptions.length });
+});
