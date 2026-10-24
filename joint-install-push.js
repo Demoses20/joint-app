@@ -8,7 +8,7 @@
   const NOTIFY_SKIPPED = 'joint_push_prompt_skipped_v1';
   const NOTIFY_COMPLETED = 'joint_push_prompt_completed_v2';
   // Public VAPID key. The matching private key must remain in Supabase Edge Function secrets.
-  const JOINT_VAPID_PUBLIC_KEY = 'BHby-yoPLaoi0oxf5kCP1v3EPLDRiLDvwniYMsA686TeGA33KOsyJ9iTbjMA-cIweZeaRZhExGzLZwcLZuFWbR4';
+  const JOINT_VAPID_PUBLIC_KEY = 'BMBQcjiEEBb4Te2xyoZYXewv6gNewkGc0DjzoPor_JdElNeqqjHReevVISfR4-uVB4u8KU1V7FRhV9FhYVhOMtw';
   let deferredInstallPrompt = null;
   let modal = null;
   let installPromptReady = false;
