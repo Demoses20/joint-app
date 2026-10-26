@@ -17,8 +17,18 @@ Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors(origin, req.headers.get("access-control-request-headers")) });
   if (req.method !== "POST") return json({ ok: false, error: "POST required." }, 405, origin);
-  const url = Deno.env.get("SUPABASE_URL"), anon = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY"), service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"), secret = Deno.env.get("PAYSTACK_SECRET_KEY");
-  if (!url || !anon || !service || !secret) return json({ ok: false, error: "Diamond Paystack checkout is not configured. Ask the JOINT administrator to configure the server-side Paystack secret." }, 503, origin);
+
+  // Use the existing JOINT-prefixed custom secrets. Supabase reserves the SUPABASE_ prefix
+  // for its own managed secrets, so do not try to create SUPABASE_SERVICE_ROLE_KEY manually.
+  const url = Deno.env.get("SUPABASE_URL");
+  const anon = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
+  const service = Deno.env.get("JOINT_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const secret = Deno.env.get("JOINT_PAYSTACK_SECRET_KEY") || Deno.env.get("PAYSTACK_SECRET_KEY");
+  if (!url || !anon || !service || !secret) {
+    console.error("joint-diamond-paystack configuration missing", { url: !!url, anon: !!anon, service: !!service, paystack: !!secret });
+    return json({ ok: false, error: "Diamond Paystack checkout is not configured. Ask the JOINT administrator to check the server-side secret names and Supabase defaults." }, 503, origin);
+  }
+
   const token = (req.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) return json({ ok: false, error: "Sign in to purchase Diamonds." }, 401, origin);
   const userDb = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token}` } } });
@@ -40,7 +50,6 @@ Deno.serve(async (req) => {
       const rate = Number(currency === "USD" ? pricing?.diamonds_per_usd : pricing?.diamonds_per_ngn);
       if (!pricing?.enabled || !Number.isFinite(rate) || rate <= 0) return json({ ok: false, error: "Diamond pricing is not enabled or its conversion rate is missing. Ask the JOINT administrator to configure Diamond pricing." }, 503, origin);
       const rawDiamonds = (amountMinor / 100) * rate;
-      // Never round up: floor to four decimal places so the purchase cannot over-credit.
       const diamonds = Math.floor((rawDiamonds + Number.EPSILON) * 10000) / 10000;
       if (!Number.isFinite(diamonds) || diamonds < 0.0001 || diamonds > 9999999999999999) return json({ ok: false, error: "This amount purchases less than 0.0001 Diamond at the current conversion rate. Increase the payment amount." }, 400, origin);
       const reference = `jwd_${crypto.randomUUID().replaceAll("-", "")}`;
