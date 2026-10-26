@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#6d35d4">
+
+  <title>JOINT — Sign In or Create Account</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #6d35d4;
+      --primary-dark: #4b20a7;
+      --background: #f8f6fc;
+      --text: #17231e;
+      --muted: #766f83;
+      --border: #e9e4f0;
+      --white: #ffffff;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--background);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 460px;
+      padding: clamp(20px, 5vw, 32px);
+      background: var(--white);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    }
+
+    .brand {
+      display: inline-block;
+      margin-bottom: 14px;
+      color: var(--primary);
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: -1px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(25px, 6vw, 32px);
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    label {
+      display: block;
+      margin-top: 17px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    input {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      margin-top: 8px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    input:focus {
+      outline: 2px solid rgba(8, 127, 91, 0.2);
+      border-color: var(--primary);
+    }
+
+    .password-wrapper {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .password-wrapper input {
+      flex: 1;
+      margin-top: 0;
+    }
+
+    button {
+      width: 100%;
+      min-height: 48px;
+      margin-top: 15px;
+      padding: 13px 16px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:hover {
+      background: var(--primary-dark);
+    }
+
+    button:focus-visible {
+      outline: 3px solid #cdb8ff;
+      outline-offset: 3px;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .password-toggle {
+      width: auto;
+      min-width: 72px;
+      min-height: 48px;
+      margin-top: 0;
+      padding: 10px 12px;
+      background: #f1eaff;
+      color: var(--primary-dark);
+      font-size: 14px;
+    }
+
+    .password-toggle:hover {
+      background: #e5d8ff;
+    }
+
+    .secondary {
+      background: #f1eaff;
+      color: var(--primary-dark);
+    }
+
+    .secondary:hover {
+      background: #e5d8ff;
+    }
+
+    .message {
+      margin-top: 20px;
+      padding: 14px;
+      border-radius: 10px;
+      background: #f1eaff;
+      color: var(--text);
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .message.error {
+      background: #fff0f0;
+      color: #8b1e1e;
+    }
+
+    .message.success {
+      background: #f1eaff;
+      color: #4b20a7;
+    }
+
+    .small {
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .account-panel {
+      margin-top: 20px;
+      padding: 18px;
+      background: #f8f6fc;
+      border-radius: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .home-link {
+      display: block;
+      margin-top: 18px;
+      color: var(--primary-dark);
+      text-align: center;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    @media (max-width: 360px) {
+      body {
+        padding: 12px;
+      }
+
+      .auth-card {
+        padding: 18px;
+      }
+
+      .password-toggle {
+        min-width: 62px;
+        padding: 9px;
+      }
+    }
+  </style>
+
+  <!-- JOINT Supabase configuration and client -->
+  <script src="./supabase.js"></script>
+</head>
+
+<body>
+  <main class="auth-card">
+    <div class="brand">JOINT</div>
+
+    <h1 id="page-title">Welcome to JOINT</h1>
+
+    <p class="subtitle">
+      Create an account or sign in to connect, learn and share.
+    </p>
+
+    <section id="auth-choice">
+      <button type="button" id="choose-create">Create Account</button>
+      <button type="button" id="choose-login" class="secondary">Login</button>
+      <button type="button" id="choose-forgot" class="secondary">Forgot Password</button>
+    </section>
+    <form id="auth-form" class="hidden">
+      <div id="name-field">
+        <label for="display-name">Full name</label>
+
+        <input
+          id="display-name"
+          name="display-name"
+          type="text"
+          autocomplete="name"
+          maxlength="100"
+          placeholder="Enter your full name"
+          required
+        >
+      </div>
+
+      <div id="signup-profile-fields">
+        <label for="signup-dob">Date of birth</label>
+        <input id="signup-dob" type="date" autocomplete="bday" required>
+
+        <label for="signup-country">Country</label>
+        <select id="signup-country" required><option value="">Select country</option></select>
+
+        <label for="signup-region">State / region</label>
+        <select id="signup-region" required><option value="">Select country first</option></select>
+        <input id="signup-region-custom" type="text" maxlength="100" placeholder="Enter state / region" hidden>
+
+        <label for="signup-gender">Gender</label>
+        <select id="signup-gender" required>
+          <option value="">Select gender</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+
+        <label>Interests (select one or more)</label>
+        <div id="signup-interests" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 16px">
+          <label><input type="checkbox" value="Education"> Education</label>
+          <label><input type="checkbox" value="Technology"> Technology</label>
+          <label><input type="checkbox" value="Science"> Science</label>
+          <label><input type="checkbox" value="Business"> Business</label>
+          <label><input type="checkbox" value="Vocational skills"> Vocational skills</label>
+          <label><input type="checkbox" value="Languages"> Languages</label>
+          <label><input type="checkbox" value="Exam preparation"> Exam preparation</label>
+          <label><input type="checkbox" value="Arts & creativity"> Arts &amp; creativity</label>
+        </div>
+      </div>
+
+      <label for="email">Email address</label>
+
+      <input
+        id="email"
+        name="email"
+        type="email"
+        autocomplete="email"
+        maxlength="254"
+        placeholder="you@example.com"
+        required
+      >
+
+      <label for="password">Password</label>
+
+      <div class="password-wrapper">
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          minlength="8"
+          maxlength="128"
+          placeholder="Enter your password"
+          required
+        >
+
+        <button
+          id="toggle-password"
+          class="password-toggle"
+          type="button"
+          aria-label="Show password"
+          aria-pressed="false"
+        >
+          Show
+        </button>
+      </div>
+
+      <button id="signup-button" type="button">
+        Create Account
+      </button>
+
+      <button id="login-button" type="submit" class="secondary">
+        Sign In
+      </button>
+
+      <button id="forgot-button" type="button" class="secondary">
+        Forgot Password?
+      </button>
+    </form>
+
+    <section id="signed-in" class="account-panel hidden">
+      <h2>You're signed in!</h2>
+
+      <p id="account-info"></p>
+
+      <button id="signout-button" type="button">
+        Sign Out
+      </button>
+
+      <a class="home-link" href="./index.html">
+        Continue to JOINT Home
+      </a>
+    </section>
+
+    <div
+      id="message"
+      class="message"
+      role="status"
+      aria-live="polite"
+    >
+      Preparing secure sign-in...
+    </div>
+
+    <p class="small">
+      Use an email address you can access. You may need to confirm your
+      email before signing in. Never share your password with anyone.
+    </p>
+  </main>
+
+  <script>
+    "use strict";
+
+    const authForm = document.getElementById("auth-form");
+    const authChoice = document.getElementById("auth-choice");
+    const chooseCreate = document.getElementById("choose-create");
+    const chooseLogin = document.getElementById("choose-login");
+    const chooseForgot = document.getElementById("choose-forgot");
+    const nameField = document.getElementById("name-field");
+    const nameInput = document.getElementById("display-name");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+
+    const togglePasswordButton =
+      document.getElementById("toggle-password");
+
+    const signupButton = document.getElementById("signup-button");
+    const loginButton = document.getElementById("login-button");
+    const forgotButton = document.getElementById("forgot-button");
+    const signoutButton = document.getElementById("signout-button");
+
+    const pageTitle = document.getElementById("page-title");
+    const message = document.getElementById("message");
+    const signedInPanel = document.getElementById("signed-in");
+    const accountInfo = document.getElementById("account-info");
+
+    const signupCountries = ["Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Congo (Democratic Republic)", "Costa Rica", "Côte d'Ivoire", "Croatia", "Cuba", "Cyprus", "Czechia", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Türkiye", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"];
+    const signupCountrySelect = document.getElementById("signup-country");
+    signupCountrySelect.innerHTML = '<option value="">Select country</option>' + signupCountries.map(v => '<option value="' + v + '">' + v + '</option>').join('');
+    const signupRegionSelect = document.getElementById("signup-region");
+    const signupRegionCustom = document.getElementById("signup-region-custom");
+    const regionsByCountry = { "Nigeria":["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT Abuja","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"], "Ghana":["Ashanti","Greater Accra","Central","Eastern","Northern","Volta","Western"], "United States":["California","Florida","New York","Texas","Washington"], "United Kingdom":["England","Scotland","Wales","Northern Ireland"], "India":["Delhi","Karnataka","Kerala","Maharashtra","Tamil Nadu","Uttar Pradesh"] };
+    function loadSignupRegions() {
+      const options = regionsByCountry[signupCountrySelect.value];
+      signupRegionSelect.innerHTML = '<option value="">Select state / region</option>' + (options || []).map(v => '<option value="' + v + '">' + v + '</option>').join('') + '<option value="__other__">Other / enter manually</option>';
+      signupRegionCustom.hidden = true; signupRegionCustom.required = false; signupRegionSelect.required = true;
+    }
+    signupCountrySelect.addEventListener("change", loadSignupRegions);
+    signupRegionSelect.addEventListener("change", () => {
+      const other = signupRegionSelect.value === "__other__";
+      signupRegionCustom.hidden = !other; signupRegionCustom.required = other;
+    });
+    let supabaseClient = null;
+    let currentMode = "signup";
+    let authSubscription = null;
+    // Capture the requested app page before Supabase callback parameters are cleaned.
+    const requestedNext = new URLSearchParams(window.location.search).get("next");
+
+    function getSafeNextPath() {
+      if (!requestedNext) return "index.html";
+      const candidate = requestedNext.trim();
+      // Only allow a simple relative path on this site; never accept an external URL.
+      if (
+        !/^[a-zA-Z0-9_-]+\.html(?:[?#][^\s]*)?$/.test(candidate) ||
+        candidate.toLowerCase().startsWith("auth.html") ||
+        candidate.toLowerCase().startsWith("reset-password.html")
+      ) return "index.html";
+      return candidate || "index.html";
+    }
+
+    function goToApp() {
+      window.location.replace(getSafeNextPath());
+    }
+
+    function showMessage(text, type = "") {
+      message.textContent = text;
+      message.className = "message";
+
+      if (type) {
+        message.classList.add(type);
+      }
+    }
+
+    function setBusy(isBusy) {
+      signupButton.disabled = isBusy;
+      loginButton.disabled = isBusy;
+      forgotButton.disabled = isBusy;
+      signoutButton.disabled = isBusy;
+      togglePasswordButton.disabled = isBusy;
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      const isSignup = mode === "signup";
+      const isLogin = mode === "login";
+      authChoice.classList.add("hidden");
+      authForm.classList.remove("hidden");
+      nameField.classList.toggle("hidden", !isSignup);
+      nameInput.required = isSignup;
+      document.getElementById("signup-profile-fields").classList.toggle("hidden", !isSignup);
+      document.querySelectorAll("#signup-profile-fields input, #signup-profile-fields select").forEach(el => { el.required = isSignup; });
+      pageTitle.textContent = isSignup ? "Create your JOINT account" : "Login to JOINT";
+      document.querySelector(".subtitle").textContent = isSignup ? "Create your account to connect, learn and share." : "Enter your email address and password.";
+      signupButton.classList.toggle("hidden", !isSignup);
+      loginButton.classList.toggle("hidden", !isLogin);
+      forgotButton.classList.remove("hidden");
+      forgotButton.textContent = "Forgot Password?";
+      passwordInput.required = true;
+      passwordInput.autocomplete = isSignup ? "new-password" : "current-password";
+      loginButton.textContent = "Login";
+    }
+    chooseCreate.addEventListener("click", () => setMode("signup"));
+    chooseLogin.addEventListener("click", () => setMode("login"));
+    chooseForgot.addEventListener("click", () => window.location.href = "reset-password.html");
+
+    function displaySession(user) {
+      const isSignedIn = Boolean(user);
+
+      authForm.classList.toggle("hidden", isSignedIn);
+      signedInPanel.classList.toggle("hidden", !isSignedIn);
+
+      if (user) {
+        accountInfo.textContent =
+          "Signed in as " + (user.email || "your JOINT account") + ".";
+      }
+    }
+
+    // Show/hide password for registration and sign-in.
+    togglePasswordButton.addEventListener("click", () => {
+      const showPassword = passwordInput.type === "password";
+
+      passwordInput.type = showPassword ? "text" : "password";
+
+      togglePasswordButton.textContent = showPassword ? "Hide" : "Show";
+
+      togglePasswordButton.setAttribute(
+        "aria-label",
+        showPassword ? "Hide password" : "Show password"
+      );
+
+      togglePasswordButton.setAttribute(
+        "aria-pressed",
+        String(showPassword)
+      );
+    });
+
+    // Switch from registration to sign-in mode.
+    loginButton.addEventListener("click", (event) => {
+      if (currentMode === "signup") {
+        event.preventDefault();
+        setMode("login");
+        showMessage("Enter your email address and password to sign in.");
+      }
+    });
+
+    // Register a new account.
+    signupButton.addEventListener("click", async () => {
+      if (currentMode !== "signup" || !authForm.reportValidity()) {
+        return;
+      }
+
+      setBusy(true);
+
+      try {
+        if (!supabaseClient) {
+          supabaseClient = await window.jointSupabaseConnection;
+        }
+
+        const fullName = nameInput.value.trim();
+        const signupDob = document.getElementById("signup-dob").value;
+        const signupCountry = document.getElementById("signup-country").value.trim();
+        const signupRegion = (signupRegionSelect.value === "__other__" ? signupRegionCustom.value : signupRegionSelect.value).trim();
+        const signupGender = document.getElementById("signup-gender").value;
+        const signupInterests = Array.from(document.querySelectorAll("#signup-interests input:checked")).map(el => el.value);
+        const signupAge = signupDob ? Math.floor((Date.now() - new Date(signupDob + "T00:00:00").getTime()) / 31557600000) : 0;
+
+        if (!fullName) throw new Error("Please enter your full name.");
+        if (!signupDob || new Date(signupDob) >= new Date() || signupAge < 13 || signupAge > 120) throw new Error("Select a valid date of birth. You must be between 13 and 120 years old.");
+        if (!signupCountry || !signupRegion) throw new Error("Please select or enter your country and state/region.");
+        if (!["male", "female"].includes(signupGender)) throw new Error("Please select Male or Female.");
+        if (!signupInterests.length) throw new Error("Please select at least one interest.");
+
+        const { data, error } = await supabaseClient.auth.signUp({
+          email: emailInput.value.trim(),
+          password: passwordInput.value,
+          options: {
+            // Send the confirmation link back to the published GitHub Pages site.
+            emailRedirectTo: "https://myjointapp.com/auth.html",
+            data: {
+              display_name: fullName,
+              full_name: fullName,
+              date_of_birth: signupDob,
+              age: signupAge,
+              country: signupCountry,
+              state_region: signupRegion,
+              gender: signupGender,
+              interests: signupInterests
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        passwordInput.value = "";
+
+        if (data.session) {
+          window.location.replace(getSafeNextPath());
+          return;
+        } else {
+          setMode("login");
+
+          showMessage(
+            "Your registration was submitted. Check your email for " +
+            "a confirmation link if email confirmation is enabled. " +
+            "Then sign in.",
+            "success"
+          );
+        }
+      } catch (error) {
+        console.error("JOINT registration error:", error);
+
+        showMessage(
+          error.message || "We couldn't create your account.",
+          "error"
+        );
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    // Sign in with an existing account.
+    authForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (currentMode !== "login" || !authForm.reportValidity()) {
+        return;
+      }
+
+      setBusy(true);
+
+      try {
+        if (!supabaseClient) {
+          supabaseClient = await window.jointSupabaseConnection;
+        }
+
+        const { data, error } =
+          await supabaseClient.auth.signInWithPassword({
+            email: emailInput.value.trim(),
+            password: passwordInput.value
+          });
+
+        if (error) throw error;
+        const {data:accountProfile,error:profileStatusError}=await supabaseClient.from("joint_profiles").select("account_status").eq("id",data.user.id).maybeSingle();
+        if(!profileStatusError && accountProfile?.account_status==="suspended"){
+          passwordInput.value="";
+          window.location.replace("account-appeal.html");
+          return;
+        }
+        if(!profileStatusError && accountProfile?.account_status==="permanently_deleted"){
+          await supabaseClient.auth.signOut();
+          throw new Error("This JOINT account has been permanently deleted and cannot be used to sign in.");
+        }
+        passwordInput.value = "";
+        window.location.replace(getSafeNextPath());
+        return;
+      } catch (error) {
+        console.error("JOINT sign-in error:", error);
+
+        showMessage(
+          error.message || "We couldn't sign you in.",
+          "error"
+        );
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    // Request a password-reset email.
+    forgotButton.addEventListener("click", () => { window.location.href = "reset-password.html"; });
+
+    // Sign out.
+    signoutButton.addEventListener("click", async () => {
+      setBusy(true);
+
+      try {
+        if (!supabaseClient) {
+          supabaseClient = await window.jointSupabaseConnection;
+        }
+
+        const { error } = await supabaseClient.auth.signOut();
+
+        if (error) throw error;
+
+        passwordInput.value = "";
+        displaySession(null);
+        setMode("signup");
+
+        showMessage("You have signed out of JOINT.", "success");
+      } catch (error) {
+        console.error("JOINT sign-out error:", error);
+
+        showMessage(
+          error.message || "We couldn't sign you out.",
+          "error"
+        );
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    // Initialize the Supabase client and restore an existing session.
+    async function initializeAuth() {
+      try {
+        if (!window.jointSupabaseConnection) {
+          throw new Error(
+            "The JOINT Supabase connection file was not found."
+          );
+        }
+
+        supabaseClient = await window.jointSupabaseConnection;
+
+        // Read callback details before cleaning the URL.
+        const authParams = new URLSearchParams(
+          window.location.hash.replace(/^#/, "")
+        );
+        const queryParams = new URLSearchParams(window.location.search);
+        const authError =
+          authParams.get("error_description") ||
+          queryParams.get("error_description") ||
+          authParams.get("error") ||
+          queryParams.get("error");
+        const authType = authParams.get("type") || queryParams.get("type");
+        const callbackCode = queryParams.get("code");
+
+        if (authError) {
+          showMessage(
+            "Email confirmation could not be completed: " +
+              authError.replace(/\+/g, " "),
+            "error"
+          );
+        }
+
+        // Supabase JS usually handles PKCE callback codes automatically.
+        // If no session exists yet, attempt the code exchange explicitly.
+        let { data, error } = await supabaseClient.auth.getSession();
+        if (error) throw error;
+
+        if (callbackCode && !data.session) {
+          const exchange = await supabaseClient.auth.exchangeCodeForSession(
+            callbackCode
+          );
+          if (exchange.error) throw exchange.error;
+          data = { session: exchange.data.session };
+        }
+
+        if (!authError && data.session?.user) {
+          window.location.replace(getSafeNextPath());
+          return;
+        }
+
+        displaySession(data.session?.user || null);
+        setMode(data.session ? "login" : "signup");
+
+        // Remove callback parameters from the address bar after processing.
+        if (window.location.search || window.location.hash) {
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.origin + window.location.pathname
+          );
+        }
+
+        if (!authError && data.session?.user &&
+            (authType === "signup" || authType === "email" ||
+             authType === "magiclink" || callbackCode ||
+             window.location.hash.includes("access_token"))) {
+          showMessage(
+            "Your email confirmation was successful. Your JOINT account is ready.",
+            "success"
+          );
+        } else if (!authError) {
+          showMessage(
+            data.session
+              ? "You are signed in to JOINT."
+              : "JOINT authentication is ready. Sign in or create an account.",
+            "success"
+          );
+        }
+
+        if (authSubscription) {
+          authSubscription.unsubscribe();
+        }
+
+        const { data: authListener } =
+          supabaseClient.auth.onAuthStateChange((_event, session) => {
+            displaySession(session?.user || null);
+          });
+
+        authSubscription = authListener.subscription;
+      } catch (error) {
+        console.error("JOINT authentication initialization error:", error);
+
+        showMessage(
+          "Authentication could not start. Check supabase.js and " +
+          "your internet connection. " +
+          (error.message || ""),
+          "error"
+        );
+      }
+    }
+
+    authChoice.classList.remove("hidden");
+    authForm.classList.add("hidden");
+    initializeAuth();
+  </script>
+<script src="operation-loading-bar.js" defer></script>
+<script src="auto-linkify.js" defer></script>
+</body>
+</html>
