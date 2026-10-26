@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Profile — JOINT</title><link rel="stylesheet" href="style.css"></head><body><header class="topbar"><div class="topbar-inner"><a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a><nav class="main-nav"><a href="index.html">Home</a><a href="meetings.html">Meetings</a><a href="classes.html">Classes</a><a href="my-learning.html">My Learning</a><a href="friends.html">Friends</a><a href="chat.html">Chat</a><a class="active" href="profile.html">Profile</a><a href="settings.html">Settings</a></nav></div></header><nav class="bottom-nav"><a href="index.html"><span>⌂</span>Home</a><a href="meetings.html"><span>▣</span>Meetings</a><a href="classes.html"><span>▤</span>Classes</a><a href="friends.html"><span>♧</span>Friends</a><a href="chat.html"><span>✉</span>Chat</a></nav><main class="page"><div class="page-heading"><div><div class="eyebrow">Your learning identity</div><h1>Profile</h1><p class="subtitle">Update your photo and details, publish posts, and manage what you shared.</p></div></div><section class="card"><div id="joint-profile-summary" class="joint-profile-row"></div><div class="profile-edit-toggle-row profile-action-buttons"><button type="button" id="toggle-profile-edit" class="btn secondary" aria-expanded="false" aria-controls="profile-edit-panel">✎ Edit profile</button><button type="button" id="toggle-create-post" class="btn" aria-expanded="false" aria-controls="create-post-panel">＋ Create a post</button></div></section><div class="joint-profile-grid" id="profile-edit-panel" hidden><section class="card"><h2>Edit profile</h2><form id="profile-form"><div class="field"><label for="profile-picture">Profile picture</label><input id="profile-picture" type="file" accept="image/*"><small>Image up to 3 MB.</small><img id="profile-picture-preview" class="joint-post-media" alt="Profile picture preview" style="max-width:180px" onerror="this.style.display='none'"></div><div class="field"><label for="profile-name">Display name</label><input id="profile-name" maxlength="80" required></div><div class="field"><label for="profile-bio">About you</label><textarea id="profile-bio" maxlength="600" placeholder="Tell people about yourself"></textarea></div><div class="field"><label for="profile-dob">Date of birth</label><input id="profile-dob" type="date" required autocomplete="bday"><small>Your age is calculated automatically.</small></div>
+<div class="field"><label for="profile-country">Country</label><input id="profile-country" readonly aria-readonly="true"><small>Managed in Settings.</small></div>
+<div class="field"><label for="profile-region">State / region</label><input id="profile-region" readonly aria-readonly="true"><small>Managed in Settings.</small></div>
+<div class="field"><label for="profile-gender">Gender</label><select id="profile-gender" required><option value="">Select gender</option><option value="male">Male</option><option value="female">Female</option></select></div>
+<div class="field"><label>Interests</label><div id="profile-interest-chips" class="choices" aria-live="polite"></div><button type="button" id="profile-interest-add" class="btn">＋ Add interests</button><div id="profile-interest-picker" hidden class="choices" style="margin-top:10px"></div><input id="profile-interests" type="hidden" required><small>Select one or more interests.</small></div><div class="actions"><button type="submit">Save profile</button></div><p id="profile-success" class="success" role="status"></p></form></section></div><div id="create-post-panel" class="card create-post-panel" hidden><h2>Share with the community</h2><p class="muted">Publish an update, photo, or video for people on JOINT.</p><form id="joint-post-form"><div class="field"><label for="joint-post-text">Your update</label><textarea id="joint-post-text" maxlength="3000" placeholder="What would you like to share?" ></textarea></div><div class="field"><label for="joint-post-file">Attach a picture or video</label><input id="joint-post-file" type="file" accept="image/*,video/*"><small>Images up to 10 MB and videos up to 50 MB. Choose one media file per post.</small></div><div class="actions"><button type="submit">Publish post</button></div><p id="joint-post-message" class="muted" role="status"></p></form></div>
+<section class="card joint-live-card" id="joint-live-card" style="margin-top:22px">
+  <div class="eyebrow">LIVE & SCHEDULED EVENTS</div>
+  <h2>🔴 Go Live or Schedule a Live</h2>
+  <p class="muted live-copy">Start planning a live session, invite up to three partners, or publish a scheduled-live notice for your audience.</p>
+  <div class="live-actions">
+    <button type="button" class="btn" id="joint-live-now">＋ Host a live now</button>
+    <button type="button" class="btn secondary" id="joint-live-schedule-toggle">▦ Schedule a live</button>
+  </div>
+  <form id="joint-live-form" hidden>
+    <div class="field"><label for="joint-live-title">Live title</label><input id="joint-live-title" maxlength="120" required placeholder="What will your live be about?"></div>
+    <div class="field"><label for="joint-live-partners">Invite live partners (up to 3 usernames or profile links, comma-separated)</label><input id="joint-live-partners" maxlength="500" placeholder="partner1, partner2"><small class="live-copy">Invitations need the live-streaming service to be connected before partners can join the live room.</small></div>
+    <div class="field"><label for="joint-live-datetime">Date and time</label><input id="joint-live-datetime" type="datetime-local"></div>
+    <div class="field"><label for="joint-live-description">Description (optional)</label><textarea id="joint-live-description" maxlength="500" placeholder="Tell followers what to expect"></textarea></div>
+    <div class="live-actions"><button type="submit" class="btn">Publish live plan</button><button type="button" class="btn secondary" id="joint-live-cancel">Cancel</button></div>
+    <p id="joint-live-message" class="muted live-copy" role="status" aria-live="polite"></p>
+  </form>
+  <div id="joint-live-list" class="joint-live-list"></div>
+  <p class="live-copy" style="font-size:.9rem;margin-top:12px">Note: this page currently saves live plans on this device only. Actual live video, partner invitations, follower notifications and public scheduled-event publishing require the JOINT live backend to be connected.</p>
+</section>
+<style>
+.joint-live-card .live-copy{color:#51465f!important;line-height:1.65}
+.joint-live-card .live-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+.joint-live-card .btn{min-height:46px;padding:12px 18px;border-radius:13px;font-weight:800;cursor:pointer}
+.joint-live-card .btn:not(.secondary){background:#6938d1;color:#fff;border:1px solid #6938d1}
+.joint-live-card .btn.secondary{background:#f1e9ff;color:#5424b5;border:1px solid #dfd0ff}
+.joint-live-card .field{margin:14px 0}
+.joint-live-card label{display:block;font-weight:800;margin-bottom:7px;color:#241b35}
+.joint-live-card input,.joint-live-card textarea{box-sizing:border-box;width:100%;padding:13px;border:1px solid #d7cfe4;border-radius:12px;font:inherit;color:#241b35;background:#fff}
+.joint-live-card small{display:block;margin-top:5px}
+.joint-live-card [hidden]{display:none!important}
+.joint-live-list article{padding:14px;margin-top:12px;background:#f5efff;border-radius:14px;color:#241b35}
+.joint-live-list p{color:#51465f}
+</style>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const form=$('joint-live-form'), list=$('joint-live-list'), msg=$('joint-live-message');
+  const key='joint-live-plans-v1';
+  function load(){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(_){return []}}
+  function render(){const items=load();list.innerHTML=items.length?items.map((x,i)=>'<article><strong>'+escapeHtml(x.title)+'</strong><p>'+escapeHtml(x.whenLabel)+'</p>'+(x.description?'<p>'+escapeHtml(x.description)+'</p>':'')+'<p><strong>Status:</strong> '+(x.scheduled?'Scheduled plan (device only)':'Live launch requested')+'</p><button type="button" data-remove="'+i+'" class="btn secondary">Remove plan</button></article>').join(''):'<p>No live plans saved on this device yet.</p>'}
+  function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  $('joint-live-now').addEventListener('click',()=>{form.hidden=false;$('joint-live-datetime').required=false;$('joint-live-datetime').value='';form.dataset.scheduled='false';$('joint-live-title').focus()});
+  $('joint-live-schedule-toggle').addEventListener('click',()=>{form.hidden=false;$('joint-live-datetime').required=true;form.dataset.scheduled='true';if(!$('joint-live-datetime').value){const d=new Date(Date.now()+3600000);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());$('joint-live-datetime').value=d.toISOString().slice(0,16)}$('joint-live-title').focus()});
+  $('joint-live-cancel').addEventListener('click',()=>{form.reset();form.hidden=true;msg.textContent=''});
+  form.addEventListener('submit',e=>{e.preventDefault();const title=$('joint-live-title').value.trim(), partners=$('joint-live-partners').value.split(',').map(s=>s.trim()).filter(Boolean);if(partners.length>3){msg.textContent='Invite no more than three partners (maximum four people on screen including the host).';return}const scheduled=form.dataset.scheduled==='true', dt=$('joint-live-datetime').value;if(scheduled&&(!dt||new Date(dt)<=new Date())){msg.textContent='Choose a future date and time.';return}const item={title,partners,scheduled,datetime:dt,whenLabel:scheduled?new Date(dt).toLocaleString():'Live now requested · '+new Date().toLocaleString(),description:$('joint-live-description').value.trim(),createdAt:new Date().toISOString()};const items=load();items.unshift(item);localStorage.setItem(key,JSON.stringify(items.slice(0,20)));msg.textContent=scheduled?'Live plan saved on this device. It is not yet publicly published or notifying followers.':'Live launch request saved on this device. Live video will not start until streaming is connected.';form.reset();form.hidden=true;render()});
+  list.addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const items=load();items.splice(Number(b.dataset.remove),1);localStorage.setItem(key,JSON.stringify(items));render()});
+  render();
+})();
+</script>
+
+<section style="margin-top:22px"><div class="section-title"><h2>Your posts</h2></div><div id="joint-own-posts"></div></section><style>.profile-action-buttons{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}.profile-action-buttons .btn{min-height:48px;padding:12px 20px;border-radius:14px;font-weight:800;cursor:pointer}.profile-action-buttons .btn:not(.secondary){background:#6938d1;color:#fff;border:1px solid #6938d1}.profile-action-buttons .secondary{background:#f1e9ff;color:#5b2bb8;border:1px solid #e2d3ff}.create-post-panel{margin-top:18px}.create-post-panel[hidden],#profile-edit-panel[hidden]{display:none!important}.profile-edit-toggle-row{align-items:center}</style></main><footer class="footer">JOINT · Learn, connect, and grow together</footer><script src="navigation.js"></script><script src="social.js"></script><script src="upload-plus-ui.js" defer></script><script src="operation-loading-bar.js" defer></script>
+<script src="auto-linkify.js" defer></script>
+</body></html>
