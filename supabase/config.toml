@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.joint-ai-points-]
 verify_jwt = false
+
+[functions.joint-branded-media-export]
+verify_jwt = true
