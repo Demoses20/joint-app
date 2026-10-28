@@ -91,7 +91,7 @@ app.post('/process', requireKey, upload.single('file'), async (req, res) => {
     await runFfmpeg([
       '-hide_banner','-loglevel','error','-y','-i',input,'-i',overlayPath,
       '-filter_complex',
-      '[1:v][0:v]scale2ref=w='trunc(min(460,main_w*0.48)/2)*2':h=-2[wm][base];[base][wm]overlay=x=W-w-18:y=H-h-18:format=auto[v]',
+      "[1:v][0:v]scale2ref=w=trunc(min(460,main_w*0.48)/2)*2:h=-2[wm][base];[base][wm]overlay=x=W-w-18:y=H-h-18:format=auto[v]",
       '-map','[v]','-map','0:a?','-c:v','libx264','-preset','veryfast','-crf','23','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-movflags','+faststart','-shortest',outputPath
     ]);
     const output = await readFile(outputPath);
