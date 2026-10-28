@@ -6,6 +6,7 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (status: number, message: string) => new Response(JSON.stringify({ error: message }), { status, headers: { ...cors, "Content-Type": "application/json" } });
+const MAX_BYTES = 50 * 1024 * 1024;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -15,96 +16,68 @@ Deno.serve(async (req) => {
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const processorUrl = Deno.env.get("JOINT_MEDIA_PROCESSOR_URL");
   const processorKey = Deno.env.get("JOINT_MEDIA_PROCESSOR_KEY");
-  if (!supabaseUrl || !anonKey || !processorUrl || !processorKey) {
-    return json(503, "Branded media processing is not fully configured. Contact the JOINT administrator.");
-  }
+  if (!supabaseUrl || !anonKey || !processorUrl || !processorKey) return json(503, "Branded media processing is not fully configured. Contact the JOINT administrator.");
 
-  const authHeader = req.headers.get("Authorization") || "";
-  const token = authHeader.match(/^Bearer\s+(.+)$/i)?.[1];
+  const token = (req.headers.get("Authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) return json(401, "Sign in to download branded media.");
   const supabase = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return json(401, "Your session has expired. Sign in again.");
 
-  let mediaUrl = "";
   let mediaType = "";
   let creator = "JOINT Creator";
   let sourceBlob: Blob;
-  let contentType = "";
+  let fileName = "joint-source-video.mp4";
   try {
-    const reqType = req.headers.get("content-type") || "";
-    if (reqType.includes("multipart/form-data")) {
-      const incoming = await req.formData();
-      const file = incoming.get("file");
-      mediaType = String(incoming.get("media_type") || "").toLowerCase();
-      creator = String(incoming.get("creator") || "JOINT Creator").slice(0, 80);
-      if (!(file instanceof File)) return json(400, "A media file is required.");
-      if (!(["image", "video"].includes(mediaType))) return json(400, "A valid media type is required.");
-      if (!file.size) return json(422, "The original media file is empty.");
-      if (file.size > 50 * 1024 * 1024) return json(413, "Media files must be 50 MB or smaller.");
-      contentType = file.type || (mediaType === "image" ? "image/jpeg" : "video/mp4");
-      if (mediaType === "video" && contentType === "application/octet-stream") contentType = "video/mp4";
-      if (mediaType === "image" && !contentType.startsWith("image/")) return json(415, "The selected file is not an image.");
-      if (mediaType === "video" && !(contentType.startsWith("video/") || contentType === "application/octet-stream")) return json(415, "The selected file is not a video.");
+    const contentType = (req.headers.get("content-type") || "").toLowerCase();
+    if (contentType.includes("multipart/form-data")) {
+      // Browser-created blob: media cannot be fetched by the server; accept the authenticated upload.
+      const form = await req.formData();
+      const file = form.get("file");
+      mediaType = String(form.get("media_type") || "").toLowerCase();
+      creator = String(form.get("creator") || creator).slice(0, 80);
+      if (!(file instanceof File)) return json(400, "Media file required.");
       sourceBlob = file;
+      fileName = file.name || fileName;
     } else {
       let body: { media_url?: string; media_type?: string; creator?: string };
       try { body = await req.json(); } catch { return json(400, "Invalid request body."); }
-      mediaUrl = String(body.media_url || "");
+      const mediaUrl = String(body.media_url || "");
       mediaType = String(body.media_type || "").toLowerCase();
-      creator = String(body.creator || "JOINT Creator").slice(0, 80);
+      creator = String(body.creator || creator).slice(0, 80);
       if (!mediaUrl || !["image", "video"].includes(mediaType)) return json(400, "A media URL and valid media type are required.");
-
-      // Accept JOINT Storage and public HTTPS media. Validate every redirect hop before fetching it.
+      let parsed: URL;
+      try { parsed = new URL(mediaUrl); } catch { return json(400, "Invalid media URL."); }
       const expectedHost = new URL(supabaseUrl).host;
-      const isPublicHttps = (url: URL) => {
-        const hostname = url.hostname.toLowerCase();
-        const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-        const blockedIPv4 = ipv4 && (() => {
-          const [a,b] = ipv4.slice(1).map(Number);
-          return [a,b].some(n => n > 255) || a === 0 || a === 10 || a === 127 ||
-            (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
-            (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
-        })();
-        const blockedHost = !hostname || hostname === "localhost" || hostname.endsWith(".localhost") ||
-          hostname.endsWith(".local") || hostname.endsWith(".internal") || Boolean(blockedIPv4) ||
-          hostname === "::1" || hostname.startsWith("fc") || hostname.startsWith("fd") || hostname.startsWith("fe80:");
-        return url.protocol === "https:" && !url.username && !url.password && !blockedHost && hostname.includes(".");
-      };
-      let current: URL;
-      try { current = new URL(mediaUrl); } catch { return json(400, "Invalid media URL."); }
-      const allowedStoragePath = current.hostname === expectedHost &&
-        (current.pathname.startsWith("/storage/v1/object/public/joint-post-media/") || current.pathname.startsWith("/storage/v1/object/sign/joint-post-media/"));
-      if (!isPublicHttps(current) && !allowedStoragePath) return json(400, "Use a public HTTPS image or video URL. Private or local addresses are not allowed.");
-      let source: Response | null = null;
-      for (let hop = 0; hop <= 4; hop++) {
-        if (!isPublicHttps(current) && !(current.hostname === expectedHost && current.pathname.startsWith("/storage/v1/object/"))) return json(400, "The media URL redirected to a blocked address.");
-        source = await fetch(current.toString(), { redirect: "manual", signal: AbortSignal.timeout(45_000) });
-        if ([301, 302, 303, 307, 308].includes(source.status)) {
-          const location = source.headers.get("location");
-          if (!location || hop === 4) return json(422, "The media host redirected too many times.");
-          try { current = new URL(location, current); } catch { return json(422, "The media host returned an invalid redirect."); }
-          continue;
-        }
-        break;
-      }
-      if (!source || !source.ok) return json(422, "The original post media could not be accessed by the JOINT processor.");
+      const allowedStoragePath = parsed.pathname.startsWith("/storage/v1/object/public/joint-post-media/") || parsed.pathname.startsWith("/storage/v1/object/sign/joint-post-media/");
+      if (parsed.protocol !== "https:" || parsed.host !== expectedHost || !allowedStoragePath) return json(400, "Only media stored in JOINT's post-media bucket can be branded.");
+      const source = await fetch(parsed.toString(), { redirect: "error" });
+      if (!source.ok) return json(422, "The original post media could not be accessed.");
       const contentLength = Number(source.headers.get("content-length") || 0);
-      if (contentLength > 50 * 1024 * 1024) return json(413, "Media files must be 50 MB or smaller.");
+      if (contentLength > MAX_BYTES) return json(413, "Media files must be 50 MB or smaller.");
       sourceBlob = await source.blob();
-      if (!sourceBlob.size) return json(422, "The original media file is empty.");
-      if (sourceBlob.size > 50 * 1024 * 1024) return json(413, "Media files must be 50 MB or smaller.");
-      contentType = (source.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
-      if (mediaType === "image" && !contentType.startsWith("image/")) return json(415, "The selected file is not an image.");
-      // Some CDNs use application/octet-stream for playable video files; FFmpeg will probe the content.
-      if (mediaType === "video" && !(contentType.startsWith("video/") || contentType === "application/octet-stream" || !contentType)) return json(415, "The selected file is not a video.");
+      const pathPart = parsed.pathname.split("/").pop() || "";
+      fileName = pathPart || fileName;
     }
+  } catch (error) {
+    console.error("Could not read source media", error);
+    return json(400, "The selected media could not be read. Please try again.");
+  }
 
+  if (!["image", "video"].includes(mediaType)) return json(400, "A valid image or video type is required.");
+  if (!sourceBlob.size) return json(422, "The original media file is empty.");
+  if (sourceBlob.size > MAX_BYTES) return json(413, "Media files must be 50 MB or smaller.");
+  const inputType = (sourceBlob.type || "").toLowerCase();
+  if (mediaType === "image" && !inputType.startsWith("image/")) return json(415, "The selected file is not an image.");
+  // Some storage providers label valid videos as application/octet-stream. FFmpeg validates their content.
+  if (mediaType === "video" && inputType && !inputType.startsWith("video/") && inputType !== "application/octet-stream" && !/\.(mp4|m4v|mov|webm|mkv|avi|3gp|mpeg|mpg)$/i.test(fileName)) return json(415, "The selected file does not appear to be a supported video.");
+
+  try {
     const form = new FormData();
-    const processorBlob = mediaType === "video" && (!contentType || contentType === "application/octet-stream") ? new Blob([sourceBlob], { type: "video/mp4" }) : sourceBlob;
-    form.append("file", processorBlob, mediaType === "image" ? "joint-source-image.jpg" : "joint-source-video.mp4");
+    const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100) || (mediaType === "image" ? "joint-source-image.jpg" : "joint-source-video.mp4");
+    form.append("file", sourceBlob, safeName);
     form.append("media_type", mediaType);
-    form.append("creator", creator);
+    form.append("creator", creator.replace(/[\r\n\0]/g, " ").slice(0, 80));
     const processed = await fetch(`${processorUrl.replace(/\/$/, "")}/process`, {
       method: "POST",
       headers: { "X-Joint-Processor-Key": processorKey },
@@ -113,22 +86,21 @@ Deno.serve(async (req) => {
     });
     if (!processed.ok) {
       const details = await processed.text().catch(() => "");
-      console.error("Media processor failed", processed.status, details.slice(0, 500));
-      return json(502, "The JOINT media processor could not create the branded file. Please try again later.");
+      console.error("Media processor failed", processed.status, details.slice(0, 1000));
+      let reason = "The JOINT media processor could not create the branded file. Please try again later.";
+      try { const parsed = JSON.parse(details); if (parsed?.error) reason = String(parsed.error); } catch { /* keep safe message */ }
+      return json(502, reason);
     }
     const outputType = processed.headers.get("content-type") || (mediaType === "image" ? "image/png" : "video/mp4");
     const output = await processed.arrayBuffer();
     if (!output.byteLength) return json(502, "The media processor returned an empty file.");
-    return new Response(output, {
-      status: 200,
-      headers: {
-        ...cors,
-        "Content-Type": outputType,
-        "Content-Disposition": `attachment; filename="JOINT-branded.${mediaType === "image" ? "png" : "mp4"}"`,
-        "Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    return new Response(output, { status: 200, headers: {
+      ...cors,
+      "Content-Type": outputType,
+      "Content-Disposition": `attachment; filename="JOINT-branded.${mediaType === "image" ? "png" : "mp4"}"`,
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    }});
   } catch (error) {
     console.error("JOINT branded media export failed", error);
     return json(502, "Media processing failed or timed out. No unbranded file was downloaded.");
