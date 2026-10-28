@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: joint-media-processor
+    runtime: docker
+    rootDir: media-processor
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: JOINT_MEDIA_PROCESSOR_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
