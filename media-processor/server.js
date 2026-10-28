@@ -44,9 +44,9 @@ function watermarkSvg(width, height, creator) {
       <g>
         <rect x="${x}" y="${y}" width="${badgeW}" height="${badgeH}" rx="${Math.round(13 * scale)}" fill="#171022" fill-opacity=".64" stroke="#ffffff" stroke-opacity=".25" stroke-width="${Math.max(1, scale)}"/>
         <rect x="${iconX}" y="${iconY}" width="${icon}" height="${icon}" rx="${Math.round(10 * scale)}" fill="#6938d1" fill-opacity=".98"/>
-        <text x="${iconX + icon / 2}" y="${iconY + icon * .72}" text-anchor="middle" font-family="Arial,sans-serif" font-size="${Math.round(icon * .62)}" font-weight="900" fill="#ffffff">J</text>
-        <text x="${textX}" y="${y + badgeH * .43}" font-family="Arial,sans-serif" font-size="${titleSize}" font-weight="900" letter-spacing=".4" fill="#ffffff">JOINT</text>
-        <text x="${textX}" y="${y + badgeH * .75}" font-family="Arial,sans-serif" font-size="${siteSize}" font-weight="800" fill="#f0eaff">myjointapp.com</text>
+        <text x="${iconX + icon / 2}" y="${iconY + icon * .72}" text-anchor="middle" font-family="DejaVu Sans,Arial,sans-serif" font-size="${Math.round(icon * .62)}" font-weight="900" fill="#ffffff">J</text>
+        <text x="${textX}" y="${y + badgeH * .43}" font-family="DejaVu Sans,Arial,sans-serif" font-size="${titleSize}" font-weight="900" letter-spacing=".4" fill="#ffffff">JOINT</text>
+        <text x="${textX}" y="${y + badgeH * .75}" font-family="DejaVu Sans,Arial,sans-serif" font-size="${siteSize}" font-weight="800" fill="#f0eaff">myjointapp</text>
       </g>
     </svg>`
   );
@@ -86,7 +86,7 @@ app.post('/process', requireKey, upload.single('file'), async (req, res) => {
     await writeFile(input, req.file.buffer);
     // Use the same compact signature as images. Scale it relative to the video width
     // and anchor it bottom-right so it doesn't dominate portrait or landscape footage.
-    const overlaySvg = Buffer.from(`<svg width="460" height="72" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="458" height="70" rx="13" fill="#171022" fill-opacity=".64" stroke="#ffffff" stroke-opacity=".25" stroke-width="2"/><rect x="8" y="8" width="56" height="56" rx="10" fill="#6938d1"/><text x="36" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="43" font-weight="900" fill="#fff">J</text><text x="78" y="31" font-family="Arial,sans-serif" font-size="24" font-weight="900" letter-spacing=".4" fill="#fff">JOINT</text><text x="78" y="53" font-family="Arial,sans-serif" font-size="15" font-weight="800" fill="#f0eaff">myjointapp.com</text></svg>`);
+    const overlaySvg = Buffer.from(`<svg width="460" height="72" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="458" height="70" rx="13" fill="#171022" fill-opacity=".64" stroke="#ffffff" stroke-opacity=".25" stroke-width="2"/><rect x="8" y="8" width="56" height="56" rx="10" fill="#6938d1"/><text x="36" y="48" text-anchor="middle" font-family="DejaVu Sans,Arial,sans-serif" font-size="43" font-weight="900" fill="#fff">J</text><text x="78" y="31" font-family="DejaVu Sans,Arial,sans-serif" font-size="24" font-weight="900" letter-spacing=".4" fill="#fff">JOINT</text><text x="78" y="53" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="800" fill="#f0eaff">myjointapp</text></svg>`);
     await sharp(overlaySvg).png().toFile(overlayPath);
     await runFfmpeg([
       '-hide_banner','-loglevel','error','-y','-i',input,'-i',overlayPath,
