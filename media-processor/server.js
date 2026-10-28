@@ -27,16 +27,16 @@ function escapeXml(value) { return String(value).replace(/[&<>"']/g, c => ({'&':
 function watermarkSvg(width, height, creator) {
   // A single compact, semi-transparent signature: JOINT + myjointapp.com.
   // Keep it in the lower-right corner and scale it with the actual image dimensions.
-  const scale = Math.max(0.82, Math.min(width / 760, height / 1000, 1.65));
+  const scale = Math.max(0.62, Math.min(width / 900, height / 1200, 1.25));
   const pad = Math.max(12, Math.round(18 * scale));
-  const badgeH = Math.max(58, Math.round(82 * scale));
-  const badgeW = Math.min(Math.round(width * 0.82), Math.round(520 * scale));
+  const badgeH = Math.max(42, Math.round(64 * scale));
+  const badgeW = Math.min(Math.round(width * 0.72), Math.round(410 * scale));
   const icon = Math.round(badgeH * 0.76);
   const iconX = width - pad - badgeW + Math.round(7 * scale);
   const iconY = height - pad - badgeH + Math.round((badgeH - icon) / 2);
   const textX = iconX + icon + Math.round(10 * scale);
-  const titleSize = Math.max(21, Math.round(29 * scale));
-  const siteSize = Math.max(14, Math.round(17 * scale));
+  const titleSize = Math.max(16, Math.round(22 * scale));
+  const siteSize = Math.max(11, Math.round(13 * scale));
   const y = height - pad - badgeH;
   const x = width - pad - badgeW;
   return Buffer.from(
@@ -44,9 +44,9 @@ function watermarkSvg(width, height, creator) {
       <g>
         <rect x="${x}" y="${y}" width="${badgeW}" height="${badgeH}" rx="${Math.round(13 * scale)}" fill="#171022" fill-opacity=".64" stroke="#ffffff" stroke-opacity=".25" stroke-width="${Math.max(1, scale)}"/>
         <rect x="${iconX}" y="${iconY}" width="${icon}" height="${icon}" rx="${Math.round(10 * scale)}" fill="#6938d1" fill-opacity=".98"/>
-        <text x="${iconX + icon / 2}" y="${iconY + icon * .72}" text-anchor="middle" font-family="DejaVu Sans,Arial,sans-serif" font-size="${Math.round(icon * .62)}" font-weight="900" fill="#ffffff">J</text>
-        <text x="${textX}" y="${y + badgeH * .43}" font-family="DejaVu Sans,Arial,sans-serif" font-size="${titleSize}" font-weight="900" letter-spacing=".4" fill="#ffffff">JOINT</text>
-        <text x="${textX}" y="${y + badgeH * .75}" font-family="DejaVu Sans,Arial,sans-serif" font-size="${siteSize}" font-weight="800" fill="#f0eaff">myjointapp.com</text>
+        <text x="${iconX + icon / 2}" y="${iconY + icon * .72}" text-anchor="middle" font-family="Arial,sans-serif" font-size="${Math.round(icon * .62)}" font-weight="900" fill="#ffffff">J</text>
+        <text x="${textX}" y="${y + badgeH * .43}" font-family="Arial,sans-serif" font-size="${titleSize}" font-weight="900" letter-spacing=".4" fill="#ffffff">JOINT</text>
+        <text x="${textX}" y="${y + badgeH * .75}" font-family="Arial,sans-serif" font-size="${siteSize}" font-weight="800" fill="#f0eaff">myjointapp.com</text>
       </g>
     </svg>`
   );
@@ -79,19 +79,19 @@ app.post('/process', requireKey, upload.single('file'), async (req, res) => {
       res.set('Content-Type', 'image/png').set('Content-Disposition', 'attachment; filename="JOINT-branded.png"').set('Cache-Control', 'no-store').send(output);
       return;
     }
-    if (!req.file.mimetype.startsWith('video/')) return res.status(415).json({ error: 'Expected a video' });
+    if (!req.file.mimetype.startsWith('video/') && req.file.mimetype !== 'application/octet-stream') return res.status(415).json({ error: 'Expected a video file' });
     const input = path.join(dir, `source-${randomUUID()}`);
     const overlayPath = path.join(dir, 'watermark.png');
     const outputPath = path.join(dir, 'joint-branded.mp4');
     await writeFile(input, req.file.buffer);
     // Use the same compact signature as images. Scale it relative to the video width
     // and anchor it bottom-right so it doesn't dominate portrait or landscape footage.
-    const overlaySvg = Buffer.from(`<svg width="620" height="104" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="618" height="102" rx="18" fill="#171022" fill-opacity=".72" stroke="#ffffff" stroke-opacity=".35" stroke-width="2"/><rect x="10" y="10" width="84" height="84" rx="15" fill="#6938d1"/><text x="52" y="72" text-anchor="middle" font-family="DejaVu Sans,Arial,sans-serif" font-size="62" font-weight="900" fill="#fff">J</text><text x="116" y="45" font-family="DejaVu Sans,Arial,sans-serif" font-size="34" font-weight="900" letter-spacing=".6" fill="#fff">JOINT</text><text x="116" y="76" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="800" fill="#f0eaff">myjointapp</text></svg>`);
+    const overlaySvg = Buffer.from(`<svg width="460" height="72" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="458" height="70" rx="13" fill="#171022" fill-opacity=".64" stroke="#ffffff" stroke-opacity=".25" stroke-width="2"/><rect x="8" y="8" width="56" height="56" rx="10" fill="#6938d1"/><text x="36" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="43" font-weight="900" fill="#fff">J</text><text x="78" y="31" font-family="Arial,sans-serif" font-size="24" font-weight="900" letter-spacing=".4" fill="#fff">JOINT</text><text x="78" y="53" font-family="Arial,sans-serif" font-size="15" font-weight="800" fill="#f0eaff">myjointapp.com</text></svg>`);
     await sharp(overlaySvg).png().toFile(overlayPath);
     await runFfmpeg([
       '-hide_banner','-loglevel','error','-y','-i',input,'-i',overlayPath,
       '-filter_complex',
-      "[1:v][0:v]scale2ref=w=trunc(min(620,main_w*0.70)/2)*2:h=-2[wm][base];[base][wm]overlay=x=W-w-20:y=H-h-20:format=auto[v]",
+      "[1:v][0:v]scale2ref=w=trunc(min(460,main_w*0.48)/2)*2:h=-2[wm][base];[base][wm]overlay=x=W-w-18:y=H-h-18:format=auto[v]",
       '-map','[v]','-map','0:a?','-c:v','libx264','-preset','veryfast','-crf','23','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-movflags','+faststart',outputPath
     ]);
     const output = await readFile(outputPath);
