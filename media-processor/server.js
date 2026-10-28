@@ -90,8 +90,12 @@ app.post('/process', requireKey, upload.single('file'), async (req, res) => {
     await sharp(overlaySvg).png().toFile(overlayPath);
     await runFfmpeg([
       '-hide_banner','-loglevel','error','-y','-i',input,'-i',overlayPath,
+      // Keep the original video stream as the first overlay input. Avoid scale2ref here:
+      // it can produce inconsistent stream negotiation on some FFmpeg builds and was
+      // associated with audio-only MP4 downloads. A fixed transparent PNG overlay is
+      // deliberately used for reliable video output across portrait and landscape clips.
       '-filter_complex',
-      "[1:v][0:v]scale2ref=w=trunc(min(460\\,main_w*0.48)/2)*2:h=-2[wm][base];[base][wm]overlay=x=W-w-18:y=H-h-18:format=auto[v]",
+      '[0:v:0][1:v:0]overlay=x=W-w-18:y=H-h-18:format=auto,format=yuv420p[v]',
       '-map','[v]','-map','0:a?','-c:v','libx264','-preset','veryfast','-crf','23','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-movflags','+faststart',outputPath
     ]);
     const output = await readFile(outputPath);
