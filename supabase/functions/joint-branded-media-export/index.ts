@@ -32,13 +32,34 @@ Deno.serve(async (req) => {
   const mediaType = String(body.media_type || "").toLowerCase();
   if (!mediaUrl || !["image", "video"].includes(mediaType)) return json(400, "A media URL and valid media type are required.");
 
-  // Only allow JOINT's own Supabase Storage objects. This blocks arbitrary URL fetching/SSRF.
+  // Accept JOINT Storage media and publicly hosted HTTPS media used by community posts.
+  // Reject credentials, local hostnames, and private/link-local IP literals to reduce SSRF risk.
+  // Redirects are disabled below so a public URL cannot redirect the processor to an internal target.
   let parsed: URL;
   try { parsed = new URL(mediaUrl); } catch { return json(400, "Invalid media URL."); }
   const expectedHost = new URL(supabaseUrl).host;
-  const allowedStoragePath = parsed.pathname.startsWith("/storage/v1/object/public/joint-post-media/") || parsed.pathname.startsWith("/storage/v1/object/sign/joint-post-media/");
-  if (parsed.protocol !== "https:" || parsed.host !== expectedHost || !allowedStoragePath) {
-    return json(400, "Only media stored in JOINT's post-media bucket can be branded.");
+  const allowedStoragePath =
+    parsed.hostname === expectedHost &&
+    (parsed.pathname.startsWith("/storage/v1/object/public/joint-post-media/") ||
+     parsed.pathname.startsWith("/storage/v1/object/sign/joint-post-media/"));
+  const hostname = parsed.hostname.toLowerCase();
+  const ipv4 = hostname.match(/^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})$/);
+  const blockedIPv4 = ipv4 && (() => {
+    const [a,b] = ipv4.slice(1).map(Number);
+    return [a,b].some(n => n > 255) || a === 0 || a === 10 || a === 127 ||
+      (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) ||
+      a >= 224;
+  })();
+  const blockedHost = !hostname || hostname === "localhost" ||
+    hostname.endsWith(".localhost") || hostname.endsWith(".local") ||
+    hostname.endsWith(".internal") || hostname === "metadata.google.internal" ||
+    hostname === "169.254.169.254" || Boolean(blockedIPv4) ||
+    hostname === "::1" || hostname.startsWith("fc") || hostname.startsWith("fd") ||
+    hostname.startsWith("fe80:");
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || blockedHost ||
+      (!allowedStoragePath && !hostname.includes("."))) {
+    return json(400, "Use a public HTTPS image or video URL. Private or local addresses are not allowed.");
   }
 
   try {
