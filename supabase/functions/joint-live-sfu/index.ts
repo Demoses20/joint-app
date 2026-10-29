@@ -65,14 +65,23 @@ Deno.serve(async (req) => {
     const isConnectedParticipant = participant?.status === "connected" && (participant.role === "host" || participant.role === "guest");
     const isPublisher = isHost || isConnectedParticipant;
 
-    // Never let a room ID alone grant access. Public is open to signed-in users. Invite-only
-    // requires the current room code. Followers-only is deliberately denied until JOINT's
-    // authoritative follow-relationship table can be verified and wired into this function.
-    if (live.audience === "invite" && (!isConnectedParticipant || clean(body.room_code, 8).toUpperCase() !== live.room_code)) {
-      return json({ ok: false, error: "This is a private live. Join using an authorized invitation code first." }, 403, origin);
+    // Enforce audience access before issuing or using any Cloudflare session.
+    // joint_follows uses follower_id -> followed_user_id.
+    const suppliedRoomCode = clean(body.room_code, 8).toUpperCase();
+    if (live.audience === "invite" && !isHost && !isConnectedParticipant && suppliedRoomCode !== live.room_code) {
+      return json({ ok: false, error: "This is a private live. Enter the correct invitation code." }, 403, origin);
     }
-    if (live.audience === "followers" && !isConnectedParticipant) {
-      return json({ ok: false, error: "Followers-only access is not yet enabled in the SFU backend. No media credentials were issued." }, 403, origin);
+    if (live.audience === "followers" && !isHost && !isConnectedParticipant) {
+      const { data: follow, error: followError } = await db.from("joint_follows")
+        .select("follower_id")
+        .eq("follower_id", auth.user.id)
+        .eq("followed_user_id", live.host_user_id)
+        .maybeSingle();
+      if (followError) {
+        console.error("JOINT Live follower authorization lookup failed", followError.message);
+        return json({ ok: false, error: "Could not verify follower access. Please try again later." }, 503, origin);
+      }
+      if (!follow) return json({ ok: false, error: "Only followers of this host can watch this live." }, 403, origin);
     }
     if (action === "create-session") {
       if (!isPublisher && live.audience !== "public" && live.audience !== "followers") return json({ ok: false, error: "You are not allowed to connect to this live session." }, 403, origin);
