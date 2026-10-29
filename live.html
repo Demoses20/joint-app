@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6938d1">
+<title>JOINT Live — Go live, join, and recap</title>
+<link rel="stylesheet" href="style.css">
+<style>
+:root{--live-purple:#6938d1;--live-deep:#4f20ad;--live-ink:#20182e;--live-muted:#777184;--live-line:#e9e2f3;--live-bg:#f8f5fc}
+.live-page{max-width:1440px;margin:0 auto;padding:25px 12px 110px;color:var(--live-ink)}
+.live-hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(220px,.8fr);gap:20px;align-items:center;padding:clamp(23px,4vw,42px);border-radius:26px;color:#fff;background:radial-gradient(circle at 88% 10%,#bd91ff77,transparent 32%),linear-gradient(130deg,#4e1fae,#7137d6 58%,#9560ef);box-shadow:0 16px 38px #5525ad20}
+.live-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;letter-spacing:.13em;text-transform:uppercase;font-weight:800;color:#efe4ff}.live-pulse{width:9px;height:9px;border-radius:50%;background:#ff647e;box-shadow:0 0 0 5px #ff647e2a}
+.live-hero h1{font-size:clamp(2rem,5vw,3.25rem);line-height:1.05;letter-spacing:-.04em;color:white;margin:13px 0}.live-hero p{max-width:600px;line-height:1.7;color:#f0e8ff;margin:0 0 20px}
+.live-hero-actions{display:flex;flex-wrap:wrap;gap:10px}.live-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:13px;padding:13px 17px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;transition:transform .15s,box-shadow .15s}.live-btn:hover{transform:translateY(-1px)}.live-btn-primary{background:#fff;color:#5928b7;box-shadow:0 6px 16px #29105c24}.live-btn-ghost{background:#ffffff1c;color:#fff;border:1px solid #ffffff55}.live-hero-art{justify-self:center;display:grid;place-items:center;width:min(100%,270px);aspect-ratio:1;border:1px solid #ffffff45;border-radius:34%;background:linear-gradient(145deg,#ffffff25,#ffffff08);box-shadow:inset 0 1px 0 #ffffff55;transform:rotate(4deg)}
+.live-hero-art-inner{display:grid;place-items:center;width:68%;aspect-ratio:1;border-radius:28%;background:#fff;color:#6938d1;font-size:clamp(3.5rem,9vw,6rem);box-shadow:0 15px 40px #28104d44;transform:rotate(-4deg)}
+.live-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px;margin-top:22px}.live-panel[hidden]{display:none!important}.live-panel{background:#fff;border:1px solid var(--live-line);border-radius:21px;padding:22px;box-shadow:0 7px 24px #321e5a08;min-width:0}.live-panel-heading{display:flex;align-items:flex-start;gap:12px;margin-bottom:17px}.live-icon{display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;border-radius:14px;background:#f0e8ff;color:#6938d1;font-size:22px}.live-panel h2{font-size:1.2rem;margin:2px 0 5px;letter-spacing:-.02em}.live-panel-heading p{margin:0;color:var(--live-muted);font-size:.92rem;line-height:1.5}.live-field{display:block;margin:13px 0}.live-field span{display:block;margin-bottom:7px;font-size:.88rem;font-weight:750}.live-field input,.live-field select,.live-field textarea{box-sizing:border-box;width:100%;min-width:0;padding:13px 14px;border:1px solid #ded6e9;border-radius:12px;background:#fff;color:var(--live-ink);font:inherit;outline:none}.live-field input:focus,.live-field select:focus,.live-field textarea:focus{border-color:#8e64df;box-shadow:0 0 0 3px #8e64df20}.live-field textarea{min-height:82px;resize:vertical}.live-check{display:flex;align-items:flex-start;gap:9px;color:var(--live-muted);font-size:.88rem;line-height:1.5;margin:14px 0}.live-check input{margin-top:4px;accent-color:#6938d1}.live-full{width:100%;box-sizing:border-box}.live-btn-purple{background:linear-gradient(135deg,#5b28bd,#7c42df);color:#fff;box-shadow:0 6px 14px #6938d126}.live-btn-light{background:#f1eaff;color:#5c2db7}.live-notice{display:none;margin-top:13px;padding:12px 14px;border-radius:12px;background:#f1eaff;color:#4e269e;line-height:1.5;font-size:.9rem}.live-notice.show{display:block}.live-summary{grid-column:1/-1}.live-summary-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.live-summary-top h2{margin:0}.live-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;background:#fff0f2;color:#c02b4b;font-size:.78rem;font-weight:850}.live-summary-empty{display:flex;align-items:center;gap:15px;padding:18px;border:1px dashed #d9cdea;border-radius:15px;background:#fcfaff}.live-summary-empty .live-icon{flex-basis:48px;width:48px;height:48px}.live-summary-empty strong{display:block;margin-bottom:4px}.live-summary-empty p{margin:0;color:var(--live-muted);line-height:1.55;font-size:.9rem}.live-footnote{margin:18px 2px 0;color:var(--live-muted);font-size:.84rem;line-height:1.6}.live-bottom-nav{z-index:20}
+/* Live viewing stage: wider, landscape-first, and edge-to-edge on phones. */
+#live-call-panel{padding:clamp(14px,2vw,28px);}
+.live-video-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;width:100%;}
+.live-video-tile{position:relative;min-width:0;width:100%;aspect-ratio:4/5;min-height:520px;max-height:none;overflow:hidden;background:#100d17;border-radius:18px;box-shadow:0 8px 28px #21143118;}
+.live-video-tile video{display:block;width:100%;height:100%;object-fit:cover;}
+.live-video-grid:has(.live-video-tile.remote){grid-template-columns:repeat(2,minmax(0,1fr));}
+.live-video-grid:has(.live-video-tile.remote) .live-video-tile{aspect-ratio:3/4;min-height:480px;}
+.live-video-label{z-index:2}
+.live-stage-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:16px}
+.live-engagement{margin-top:18px;padding:16px;border:1px solid #eadff8;border-radius:18px;background:linear-gradient(135deg,#fff,#fbf8ff)}
+.live-engagement h3{margin:0 0 10px;font-size:1.05rem}
+.live-gift-row,.live-reaction-row{display:flex;gap:8px;flex-wrap:wrap}
+.live-gift{display:flex;align-items:center;gap:7px;min-height:46px;padding:8px 12px;border:1px solid #e7d9fb;border-radius:13px;background:#fff;color:#4d278e;font:inherit;font-weight:800;cursor:pointer}
+.live-gift span{font-size:1.35rem}.live-gift small{display:block;color:#81748f;font-size:.72rem;font-weight:700}
+.live-reaction{min-width:46px;min-height:44px;border:1px solid #e8def5;border-radius:999px;background:#f5edff;font-size:1.3rem;cursor:pointer}.live-reaction span{font-size:.78rem;font-weight:800}.live-control-reaction{background:#f5edff;color:#6733c1}.live-control-comment{background:#e8f6ff;color:#176da2}.live-control-gift{background:#fff1d6;color:#a65a00}.live-control-share{background:#e7f8ec;color:#207b45}.live-reaction-row[hidden]{display:none!important}
+.live-feed{display:grid;gap:8px;max-height:180px;overflow:auto;margin-top:13px;padding:2px}
+.live-feed-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:12px;background:#f7f1ff;color:#38234e;font-size:.9rem;animation:liveFeedIn .25s ease-out}
+.live-feed-item .live-feed-emoji{font-size:1.45rem}.live-feed-item.gift{background:linear-gradient(100deg,#fff1d5,#f5e7ff);border:1px solid #f2d7a8}
+.live-stage-overlay{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:18px;z-index:3}
+.live-floating-gift{position:absolute;left:50%;bottom:15%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:90%;padding:10px 15px;border-radius:999px;background:linear-gradient(100deg,#ffdf9e,#f4c7ff);color:#3a2055;font-weight:900;box-shadow:0 8px 24px #0003;white-space:nowrap;animation:liveGiftRise 3s ease-out forwards}
+.live-floating-gift b{font-size:2rem}.live-recap-list{display:grid;gap:10px}.live-recap-item{padding:14px;border:1px solid var(--live-line);border-radius:14px;background:#fff}.live-recap-item strong{display:block}.live-recap-item p{margin:5px 0;color:var(--live-muted);font-size:.9rem;line-height:1.5}.live-recap-stats{display:flex;gap:12px;flex-wrap:wrap;color:#5c2db7;font-size:.83rem;font-weight:750}
+@keyframes liveGiftRise{0%{opacity:0;bottom:8%;transform:translate(-50%,12px) scale(.8)}15%{opacity:1}75%{opacity:1}100%{opacity:0;bottom:78%;transform:translate(-50%,-10px) scale(1.06)}}
+@keyframes liveFeedIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.live-stage-reaction-layer{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;border-radius:inherit}
+.live-floating-reaction{position:absolute;bottom:10%;left:var(--x,50%);font-size:clamp(1rem,2.5vw,1.45rem);opacity:0;animation:jointReactionFloat 2.3s ease-out forwards;filter:drop-shadow(0 2px 5px #0005)}
+@keyframes jointReactionFloat{0%{opacity:0;transform:translateY(20px) scale(.7)}15%{opacity:.95}100%{opacity:0;transform:translateY(-170px) scale(1.08)}}
+.live-gift-launch{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border:1px solid #e7d9fb;border-radius:50%;background:#f2eaff;color:#5626ae;font-size:1.6rem;font-weight:900;cursor:pointer}
+.live-gift-modal[hidden]{display:none!important}.live-gift-modal{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:18px;background:#160d2788}
+.live-gift-dialog{width:min(560px,100%);max-height:85vh;overflow:auto;border-radius:22px;padding:20px;background:#fff;box-shadow:0 24px 80px #0004}
+.live-gift-modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}
+.live-gift-modal-grid .live-gift{min-height:72px}
+.live-pin-input{width:100%;box-sizing:border-box;padding:14px;border:1px solid #ded6e9;border-radius:12px;font:inherit;letter-spacing:.3em}
+.live-public-list{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-inline:contain;scroll-snap-type:x mandatory;padding:5px 2px 14px;margin:18px 0 4px;scrollbar-width:thin}.live-public-list>*{flex:0 0 clamp(138px,18vw,190px);scroll-snap-align:start}.live-public-card{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:flex-end;min-height:205px;padding:12px;border-radius:18px;overflow:hidden;color:#fff;background:radial-gradient(circle at 80% 10%,#ffcb8a88,transparent 32%),linear-gradient(145deg,#251348,#6430bd 52%,#e05d91);box-shadow:0 7px 22px #321e5a20;cursor:pointer}.live-public-card:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,#10071b08 0%,#10071b2a 35%,#10071bd9 100%)}.live-public-card .live-badge{align-self:flex-start;background:#ffeff2;color:#c02b4b;padding:5px 8px;font-size:.68rem}.live-public-avatar{position:absolute;top:13px;left:13px;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;border:3px solid #fff;box-shadow:0 3px 12px #0004;background:linear-gradient(135deg,#ffd08c,#9a69f0);color:#30134e;font-size:1rem;font-weight:900}.live-public-card h3{font-size:.9rem;line-height:1.25;margin:9px 0 4px;color:#fff}.live-public-card p{font-size:.75rem;line-height:1.35;margin:3px 0;color:#f6edff}.live-public-card .live-btn{padding:8px 10px;margin-top:8px;font-size:.8rem;background:#fff;color:#4f20ad;box-shadow:none}.live-public-card .live-public-time{opacity:.85;font-size:.7rem}.live-comment-form[hidden]{display:none!important}#live-comment-form[hidden]{display:none!important}#live-call-panel.viewer-mode #live-room-share,#live-call-panel.viewer-mode #live-end-button{display:none!important}#live-call-panel.viewer-mode .live-video-grid{grid-template-columns:minmax(0,1fr)}#live-call-panel.viewer-mode .live-video-tile{aspect-ratio:16/9;min-height:58vh;max-height:78vh}#live-call-panel.viewer-mode .live-video-grid:has(.live-video-tile.remote) .live-video-tile{aspect-ratio:16/9;min-height:58vh;max-height:78vh}.live-video-grid:has(.live-video-tile.local):has(.live-video-tile.remote){grid-template-columns:repeat(2,minmax(0,1fr))}.live-video-grid:has(.live-video-tile.local):has(.live-video-tile.remote) .live-video-tile{aspect-ratio:3/4;min-height:360px}
+.live-public-card{border:1px solid var(--live-line);border-radius:18px;padding:15px;background:#fff;min-width:0}
+.live-public-card h3{margin:7px 0}.live-public-card p{color:var(--live-muted);margin:5px 0 12px;line-height:1.5}
+.live-public-card .live-badge{margin-bottom:6px}
+@media(max-width:720px){.live-public-list>*{flex-basis:145px}.live-public-card{min-height:190px}.live-video-tile{min-height:420px}.live-video-grid:has(.live-video-tile.remote) .live-video-tile{min-height:360px}#live-call-panel.viewer-mode .live-video-tile,#live-call-panel.viewer-mode .live-video-grid:has(.live-video-tile.remote) .live-video-tile{min-height:58vh;max-height:72vh}.live-video-grid:has(.live-video-tile.local):has(.live-video-tile.remote){grid-template-columns:repeat(2,minmax(0,1fr))}.live-video-grid:has(.live-video-tile.local):has(.live-video-tile.remote) .live-video-tile{min-height:300px}.live-gift-modal-grid{grid-template-columns:1fr}}
+
+@media(max-width:720px){.live-hero{grid-template-columns:1fr}.live-hero-art{display:none}.live-grid{grid-template-columns:1fr}.live-summary{grid-column:auto}.live-panel{padding:19px}.live-page{padding:12px 7px 100px}#live-call-panel{padding:12px 8px}.live-video-grid:has(.live-video-tile.remote){gap:6px}.live-video-grid:has(.live-video-tile.remote) .live-video-tile{aspect-ratio:3/4;min-height:360px;border-radius:12px}.live-video-tile{min-height:420px;border-radius:12px}.live-engagement{padding:12px}.live-gift{flex:1 1 42%;justify-content:flex-start}}
+@media(prefers-reduced-motion:reduce){.live-btn,.joint-live-launch{transition:none}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+<a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a>
+<nav class="main-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="meetings.html">Meetings</a><a href="classes.html">Courses</a><a href="my-learning.html">My Learning</a><a href="friends.html">Friends</a><a href="chat.html">Chat</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a></nav>
+<div class="top-actions"><a class="avatar" href="profile.html" title="Open your profile" aria-label="Open your profile">J</a></div>
+</div></header>
+<nav class="bottom-nav live-bottom-nav" aria-label="Mobile navigation"><a href="index.html"><span>⌂</span>Home</a><a href="meetings.html"><span>▣</span>Meetings</a><a href="classes.html"><span>▤</span>Courses</a><a href="friends.html"><span>♧</span>Friends</a><a href="chat.html"><span>✉</span>Chat</a></nav>
+
+<main class="live-page">
+<section class="live-hero">
+<div>
+<div class="live-eyebrow"><span class="live-pulse"></span> JOINT LIVE STUDIO</div>
+<h1>Go live.<br>Bring people together.</h1>
+<p>Host a live session, join a stream with a room code, or revisit highlights and summaries from your live events — all from JOINT.</p>
+<div class="live-hero-actions"><button class="live-btn live-btn-primary" id="open-host-live" type="button" aria-controls="host-live" aria-expanded="false">＋&nbsp; Host a live</button><button class="live-btn live-btn-ghost" id="open-join-live" type="button" aria-controls="join-live" aria-expanded="false">↗&nbsp; Join a stream</button></div>
+</div>
+<div class="live-hero-art" aria-hidden="true"><div class="live-hero-art-inner">▶</div></div>
+</section>
+
+<section class="live-panel" id="live-discovery" style="margin-top:20px">
+<div class="live-summary-top"><h2>🔴 Public lives now</h2><button class="live-btn live-btn-light" id="refresh-live-list" type="button">Refresh</button></div>
+<p style="color:var(--live-muted);margin-top:0">Find active public JOINT Live sessions. On-screen participation is limited to two people per room.</p>
+<div class="live-public-list" id="live-public-list"><div class="live-summary-empty"><strong>Loading active public lives…</strong></div></div>
+</section>
+<div class="live-grid">
+<section class="live-panel" id="host-live" hidden>
+<div class="live-panel-heading"><div class="live-icon" aria-hidden="true">◉</div><div><h2>Host a live stream</h2><p>Set up your session before you go live.</p></div></div>
+<form id="live-host-form">
+<label class="live-field"><span>Live session title</span><input id="live-title" name="title" maxlength="100" placeholder="e.g. Let's talk business and ideas" required></label>
+<label class="live-field"><span>Short description <small>(optional)</small></span><textarea id="live-description" name="description" maxlength="500" placeholder="Tell viewers what this session is about"></textarea></label>
+<label class="live-field"><span>Who can join?</span><select id="live-audience" name="audience"><option value="public">Public — anyone on JOINT</option><option value="followers">Followers only</option><option value="invite">Invite / room code only</option></select></label>
+<label class="live-check"><input id="live-terms" type="checkbox" required><span>I will follow JOINT community guidelines and respect the privacy and safety of everyone in the session.</span></label>
+<button class="live-btn live-btn-purple live-full" type="submit">Continue to live setup&nbsp; →</button>
+<div class="live-notice" id="host-notice" role="status" aria-live="polite"></div>
+</form>
+</section>
+
+<section class="live-panel" id="join-live" hidden>
+<div class="live-panel-heading"><div class="live-icon" aria-hidden="true">↗</div><div><h2>Join a live stream</h2><p>Have a room code or invitation from a host?</p></div></div>
+<form id="live-join-form">
+<label class="live-field"><span>Live room code or link</span><input id="live-room-code" name="room" autocomplete="off" placeholder="Enter room code or paste invite link"></label>
+<label class="live-field"><span>Your display preference</span><select id="live-join-mode"><option value="viewer">Join as a viewer</option><option value="guest">Request to join on screen</option></select></label>
+<button class="live-btn live-btn-purple live-full" type="submit">Find live stream&nbsp; →</button>
+<div class="live-notice" id="join-notice" role="status" aria-live="polite"></div>
+<div style="margin-top:14px;color:var(--live-muted);font-size:.85rem;line-height:1.55">Room access will be checked when live streaming is connected to the JOINT backend.</div>
+</form>
+</section>
+
+<section class="live-panel live-summary" id="live-call-panel" hidden>
+<div class="live-summary-top"><h2>Live room</h2><span class="live-badge">● LIVE</span></div>
+<p id="live-call-status" role="status" aria-live="polite" style="margin:0 0 14px;color:var(--live-muted)">Preparing live room…</p>
+<div class="live-stage-tools"><span class="live-badge" id="live-viewer-count" aria-live="polite">👁 0 watching</span><span class="live-footnote" style="margin:0">Live video</span></div><div id="live-video-grid" class="live-video-grid" aria-label="Live participants"></div>
+<div class="live-engagement" id="live-engagement-panel">
+  <h3>Join the moment ✨</h3>
+  <p style="margin:0 0 12px;color:var(--live-muted);font-size:.9rem">React, comment, send a gift, or share this live.</p>
+  <div class="live-reaction-row" aria-label="Live viewer controls">
+    <button class="live-reaction live-control-reaction" type="button" id="live-reaction-control" aria-label="Open reactions">＋ <span>React</span></button>
+    <button class="live-reaction live-control-comment" type="button" id="live-comment-control" aria-label="Comment on live">＋ <span>Comment</span></button>
+    <button class="live-reaction live-control-gift" type="button" id="open-live-gifts" aria-label="Open JOINT gifts" aria-haspopup="dialog">＋ <span>Gifts</span></button>
+    <button class="live-reaction live-control-share" type="button" id="live-share-control" aria-label="Share live">＋ <span>Share</span></button>
+  </div>
+  <div id="live-reaction-options" class="live-reaction-row" hidden aria-label="Choose a reaction"><button class="live-reaction" type="button" data-live-reaction="❤️">❤️</button><button class="live-reaction" type="button" data-live-reaction="👏">👏</button><button class="live-reaction" type="button" data-live-reaction="😂">😂</button><button class="live-reaction" type="button" data-live-reaction="🔥">🔥</button><button class="live-reaction" type="button" data-live-reaction="✨">✨</button></div>
+  <form id="live-comment-form" hidden style="display:flex;gap:8px;margin-top:12px"><input id="live-comment-input" maxlength="300" aria-label="Write a comment" placeholder="Write a comment…" style="flex:1;min-width:0;border:1px solid #ded6e9;border-radius:999px;padding:11px 14px;font:inherit"><button class="live-btn live-btn-purple" type="submit">Send</button></form>
+  <div id="live-activity-feed" class="live-feed" aria-live="polite" aria-label="Live reactions and gifts"><div class="live-feed-item">✨ <span>Live activity will appear here.</span></div></div>
+  <div class="live-notice" id="live-engagement-notice" role="status" aria-live="polite"></div>
+</div>
+<div id="live-room-share" hidden style="margin-top:14px;padding:12px 14px;border-radius:12px;background:#f4efff;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<strong>Room code: <span id="live-room-code-display"></span></strong>
+<button class="live-btn live-btn-light" id="live-copy-code" type="button">Copy code</button>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+<button class="live-btn live-btn-purple" id="live-end-button" type="button" hidden>End live (host)</button>
+<button class="live-btn live-btn-light" id="live-leave-button" type="button">Leave room</button>
+</div>
+<p class="live-footnote">This first live connection supports up to two on-screen participants. Cloudflare SFU provides viewer delivery; full video recording and replay require a separate recording/storage integration.</p>
+</section>
+
+<section class="live-panel live-summary" id="live-summaries">
+<div class="live-summary-top"><h2>Live summaries</h2><span class="live-badge">▣&nbsp; Your recaps</span></div>
+<div id="live-recap-list" class="live-recap-list"><div class="live-summary-empty"><div class="live-icon" aria-hidden="true">▤</div><div><strong>Your live recaps will appear here</strong><p>Ended sessions, duration, gifts and reactions will be listed here once loaded.</p></div></div></div>
+<p class="live-footnote">Recaps store session details and engagement activity. This does not automatically record or save the full video; video replay requires a separate recording/storage service.</p>
+</section>
+</div>
+</main>
+<footer class="footer">JOINT · Learn, connect, and grow together</footer>
+<script src="navigation.js"></script>
+<script>
+(() => {
+  const hostPanel=document.getElementById('host-live'),joinPanel=document.getElementById('join-live');
+  const hostButton=document.getElementById('open-host-live'),joinButton=document.getElementById('open-join-live');
+  const showPanel=(panel)=>{const isHost=panel===hostPanel;hostPanel.hidden=!isHost;joinPanel.hidden=isHost;hostButton.setAttribute('aria-expanded',String(isHost));joinButton.setAttribute('aria-expanded',String(!isHost));panel.scrollIntoView({behavior:'smooth',block:'start'});};
+  hostButton.addEventListener('click',()=>showPanel(hostPanel));joinButton.addEventListener('click',()=>showPanel(joinPanel));
+})();
+</script>
+<div class="live-gift-modal" id="live-gift-modal" hidden>
+ <section class="live-gift-dialog" role="dialog" aria-modal="true" aria-labelledby="live-gift-modal-title">
+  <div class="live-summary-top"><h2 id="live-gift-modal-title">Choose a JOINT gift ✨</h2><button class="live-btn live-btn-light" id="close-live-gifts" type="button">Close</button></div>
+  <p style="color:var(--live-muted)">Choose a gift, then confirm securely with your six-digit Diamond Wallet PIN. Payment will only complete when the server confirms the transaction.</p>
+  <div class="live-gift-modal-grid" id="live-gift-modal-grid">
+   <button class="live-gift" type="button" data-live-gift="Glowdrop" data-gift-emoji="💧" data-gift-value="5"><span>💧</span><span>Glowdrop<small>5 Diamonds</small></span></button>
+   <button class="live-gift" type="button" data-live-gift="Sunburst" data-gift-emoji="🌞" data-gift-value="20"><span>🌞</span><span>Sunburst<small>20 Diamonds</small></span></button>
+   <button class="live-gift" type="button" data-live-gift="Starwave" data-gift-emoji="🌠" data-gift-value="50"><span>🌠</span><span>Starwave<small>50 Diamonds</small></span></button>
+   <button class="live-gift" type="button" data-live-gift="Royal Orbit" data-gift-emoji="👑" data-gift-value="200"><span>👑</span><span>Royal Orbit<small>200 Diamonds</small></span></button>
+   <button class="live-gift" type="button" data-live-gift="Nebula Dragon" data-gift-emoji="🐉" data-gift-value="1000"><span>🐉</span><span>Nebula Dragon<small>1,000 Diamonds</small></span></button>
+   <button class="live-gift" type="button" data-live-gift="Galaxy Throne" data-gift-emoji="🌌" data-gift-value="5000"><span>🌌</span><span>Galaxy Throne<small>5,000 Diamonds</small></span></button>
+   <button class="live-gift" type="button" data-live-gift="Eternal Phoenix" data-gift-emoji="🦅" data-gift-value="20000"><span>🦅</span><span>Eternal Phoenix<small>20,000 Diamonds</small></span></button>
+   <button class="live-gift" type="button" data-live-gift="JOINT Universe" data-gift-emoji="🌠" data-gift-value="100000"><span>🌠</span><span>JOINT Universe<small>100,000 Diamonds</small></span></button>
+  </div>
+  <form id="live-gift-payment-form">
+   <label class="live-field"><span>Wallet PIN (6 digits)</span><input class="live-pin-input" id="live-gift-pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{6}" maxlength="6" minlength="6" required placeholder="••••••"></label>
+   <div id="live-gift-selected" class="live-notice show" role="status">Select a gift above.</div>
+   <button class="live-btn live-btn-purple live-full" id="confirm-live-gift" type="submit" disabled>Confirm gift purchase</button>
+   <p class="live-footnote">Gift prices are displayed for selection. A secure gift-payment backend must be installed before Diamonds can be charged or creator balances credited.</p>
+  </form>
+ </section>
+</div>
+<script src="supabase.js"></script>
+<script src="live-stream.js"></script>
+</body></html>
