@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6938d1">
+<title>JOINT Live — Go live, join, and recap</title>
+<link rel="stylesheet" href="style.css">
+<style>
+:root{--live-purple:#6938d1;--live-deep:#4f20ad;--live-ink:#20182e;--live-muted:#777184;--live-line:#e9e2f3;--live-bg:#f8f5fc}
+.live-page{max-width:1120px;margin:0 auto;padding:25px 16px 110px;color:var(--live-ink)}
+.live-hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(220px,.8fr);gap:20px;align-items:center;padding:clamp(23px,4vw,42px);border-radius:26px;color:#fff;background:radial-gradient(circle at 88% 10%,#bd91ff77,transparent 32%),linear-gradient(130deg,#4e1fae,#7137d6 58%,#9560ef);box-shadow:0 16px 38px #5525ad20}
+.live-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;letter-spacing:.13em;text-transform:uppercase;font-weight:800;color:#efe4ff}.live-pulse{width:9px;height:9px;border-radius:50%;background:#ff647e;box-shadow:0 0 0 5px #ff647e2a}
+.live-hero h1{font-size:clamp(2rem,5vw,3.25rem);line-height:1.05;letter-spacing:-.04em;color:white;margin:13px 0}.live-hero p{max-width:600px;line-height:1.7;color:#f0e8ff;margin:0 0 20px}
+.live-hero-actions{display:flex;flex-wrap:wrap;gap:10px}.live-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:13px;padding:13px 17px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;transition:transform .15s,box-shadow .15s}.live-btn:hover{transform:translateY(-1px)}.live-btn-primary{background:#fff;color:#5928b7;box-shadow:0 6px 16px #29105c24}.live-btn-ghost{background:#ffffff1c;color:#fff;border:1px solid #ffffff55}.live-hero-art{justify-self:center;display:grid;place-items:center;width:min(100%,270px);aspect-ratio:1;border:1px solid #ffffff45;border-radius:34%;background:linear-gradient(145deg,#ffffff25,#ffffff08);box-shadow:inset 0 1px 0 #ffffff55;transform:rotate(4deg)}
+.live-hero-art-inner{display:grid;place-items:center;width:68%;aspect-ratio:1;border-radius:28%;background:#fff;color:#6938d1;font-size:clamp(3.5rem,9vw,6rem);box-shadow:0 15px 40px #28104d44;transform:rotate(-4deg)}
+.live-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px;margin-top:22px}.live-panel[hidden]{display:none!important}.live-panel{background:#fff;border:1px solid var(--live-line);border-radius:21px;padding:22px;box-shadow:0 7px 24px #321e5a08;min-width:0}.live-panel-heading{display:flex;align-items:flex-start;gap:12px;margin-bottom:17px}.live-icon{display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;border-radius:14px;background:#f0e8ff;color:#6938d1;font-size:22px}.live-panel h2{font-size:1.2rem;margin:2px 0 5px;letter-spacing:-.02em}.live-panel-heading p{margin:0;color:var(--live-muted);font-size:.92rem;line-height:1.5}.live-field{display:block;margin:13px 0}.live-field span{display:block;margin-bottom:7px;font-size:.88rem;font-weight:750}.live-field input,.live-field select,.live-field textarea{box-sizing:border-box;width:100%;min-width:0;padding:13px 14px;border:1px solid #ded6e9;border-radius:12px;background:#fff;color:var(--live-ink);font:inherit;outline:none}.live-field input:focus,.live-field select:focus,.live-field textarea:focus{border-color:#8e64df;box-shadow:0 0 0 3px #8e64df20}.live-field textarea{min-height:82px;resize:vertical}.live-check{display:flex;align-items:flex-start;gap:9px;color:var(--live-muted);font-size:.88rem;line-height:1.5;margin:14px 0}.live-check input{margin-top:4px;accent-color:#6938d1}.live-full{width:100%;box-sizing:border-box}.live-btn-purple{background:linear-gradient(135deg,#5b28bd,#7c42df);color:#fff;box-shadow:0 6px 14px #6938d126}.live-btn-light{background:#f1eaff;color:#5c2db7}.live-notice{display:none;margin-top:13px;padding:12px 14px;border-radius:12px;background:#f1eaff;color:#4e269e;line-height:1.5;font-size:.9rem}.live-notice.show{display:block}.live-summary{grid-column:1/-1}.live-summary-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.live-summary-top h2{margin:0}.live-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;background:#fff0f2;color:#c02b4b;font-size:.78rem;font-weight:850}.live-summary-empty{display:flex;align-items:center;gap:15px;padding:18px;border:1px dashed #d9cdea;border-radius:15px;background:#fcfaff}.live-summary-empty .live-icon{flex-basis:48px;width:48px;height:48px}.live-summary-empty strong{display:block;margin-bottom:4px}.live-summary-empty p{margin:0;color:var(--live-muted);line-height:1.55;font-size:.9rem}.live-footnote{margin:18px 2px 0;color:var(--live-muted);font-size:.84rem;line-height:1.6}.live-bottom-nav{z-index:20}
+@media(max-width:720px){.live-hero{grid-template-columns:1fr}.live-hero-art{display:none}.live-grid{grid-template-columns:1fr}.live-summary{grid-column:auto}.live-panel{padding:19px}.live-page{padding-top:18px}}
+@media(prefers-reduced-motion:reduce){.live-btn,.joint-live-launch{transition:none}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+<a class="brand" href="index.html"><span class="brand-mark">J</span> JOINT</a>
+<nav class="main-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="meetings.html">Meetings</a><a href="classes.html">Courses</a><a href="my-learning.html">My Learning</a><a href="friends.html">Friends</a><a href="chat.html">Chat</a><a href="profile.html">Profile</a><a href="settings.html">Settings</a></nav>
+<div class="top-actions"><a class="avatar" href="profile.html" title="Open your profile" aria-label="Open your profile">J</a></div>
+</div></header>
+<nav class="bottom-nav live-bottom-nav" aria-label="Mobile navigation"><a href="index.html"><span>⌂</span>Home</a><a href="meetings.html"><span>▣</span>Meetings</a><a href="classes.html"><span>▤</span>Courses</a><a href="friends.html"><span>♧</span>Friends</a><a href="chat.html"><span>✉</span>Chat</a></nav>
+
+<main class="live-page">
+<section class="live-hero">
+<div>
+<div class="live-eyebrow"><span class="live-pulse"></span> JOINT LIVE STUDIO</div>
+<h1>Go live.<br>Bring people together.</h1>
+<p>Host a live session, join a stream with a room code, or revisit highlights and summaries from your live events — all from JOINT.</p>
+<div class="live-hero-actions"><button class="live-btn live-btn-primary" id="open-host-live" type="button" aria-controls="host-live" aria-expanded="false">＋&nbsp; Host a live</button><button class="live-btn live-btn-ghost" id="open-join-live" type="button" aria-controls="join-live" aria-expanded="false">↗&nbsp; Join a stream</button></div>
+</div>
+<div class="live-hero-art" aria-hidden="true"><div class="live-hero-art-inner">▶</div></div>
+</section>
+
+<div class="live-grid">
+<section class="live-panel" id="host-live" hidden>
+<div class="live-panel-heading"><div class="live-icon" aria-hidden="true">◉</div><div><h2>Host a live stream</h2><p>Set up your session before you go live.</p></div></div>
+<form id="live-host-form">
+<label class="live-field"><span>Live session title</span><input id="live-title" name="title" maxlength="100" placeholder="e.g. Let's talk business and ideas" required></label>
+<label class="live-field"><span>Short description <small>(optional)</small></span><textarea id="live-description" name="description" maxlength="500" placeholder="Tell viewers what this session is about"></textarea></label>
+<label class="live-field"><span>Who can join?</span><select id="live-audience" name="audience"><option value="public">Public — anyone on JOINT</option><option value="followers">Followers only</option><option value="invite">Invite / room code only</option></select></label>
+<label class="live-check"><input id="live-terms" type="checkbox" required><span>I will follow JOINT community guidelines and respect the privacy and safety of everyone in the session.</span></label>
+<button class="live-btn live-btn-purple live-full" type="submit">Continue to live setup&nbsp; →</button>
+<div class="live-notice" id="host-notice" role="status" aria-live="polite"></div>
+</form>
+</section>
+
+<section class="live-panel" id="join-live" hidden>
+<div class="live-panel-heading"><div class="live-icon" aria-hidden="true">↗</div><div><h2>Join a live stream</h2><p>Have a room code or invitation from a host?</p></div></div>
+<form id="live-join-form">
+<label class="live-field"><span>Live room code or link</span><input id="live-room-code" name="room" autocomplete="off" placeholder="Enter room code or paste invite link" required></label>
+<label class="live-field"><span>Your display preference</span><select id="live-join-mode"><option value="viewer">Join as a viewer</option><option value="guest">Request to join on screen</option></select></label>
+<button class="live-btn live-btn-purple live-full" type="submit">Find live stream&nbsp; →</button>
+<div class="live-notice" id="join-notice" role="status" aria-live="polite"></div>
+<div style="margin-top:14px;color:var(--live-muted);font-size:.85rem;line-height:1.55">Room access will be checked when live streaming is connected to the JOINT backend.</div>
+</form>
+</section>
+
+<section class="live-panel live-summary" id="live-call-panel" hidden>
+<div class="live-summary-top"><h2>Live room</h2><span class="live-badge">● LIVE</span></div>
+<p id="live-call-status" role="status" aria-live="polite" style="margin:0 0 14px;color:var(--live-muted)">Preparing live room…</p>
+<div id="live-video-grid" class="live-video-grid" aria-label="Live participants"></div>
+<div id="live-room-share" hidden style="margin-top:14px;padding:12px 14px;border-radius:12px;background:#f4efff;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<strong>Room code: <span id="live-room-code-display"></span></strong>
+<button class="live-btn live-btn-light" id="live-copy-code" type="button">Copy code</button>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+<button class="live-btn live-btn-purple" id="live-end-button" type="button" hidden>End live (host)</button>
+<button class="live-btn live-btn-light" id="live-leave-button" type="button">Leave room</button>
+</div>
+<p class="live-footnote">This first live connection supports up to two on-screen participants. Viewer-only broadcast delivery requires a media distribution service and is not enabled yet.</p>
+</section>
+<style>
+.live-video-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.live-video-tile{position:relative;min-width:0;aspect-ratio:9/16;overflow:hidden;background:#17121f;border-radius:16px}.live-video-tile video{display:block;width:100%;height:100%;object-fit:cover}.live-video-label{position:absolute;left:10px;bottom:10px;padding:6px 9px;border-radius:999px;background:#160f27cc;color:white;font-size:.8rem;font-weight:750}.live-video-grid:has(.live-video-tile:only-child){grid-template-columns:minmax(0,1fr)}.live-video-grid:has(.live-video-tile:only-child) .live-video-tile{aspect-ratio:16/9;max-height:65vh}.live-video-grid .live-video-tile.remote{aspect-ratio:9/16}@media(max-width:520px){.live-video-grid{gap:7px}.live-video-label{left:6px;bottom:6px;font-size:.72rem}}
+</style>
+<section class="live-panel live-summary" id="live-summaries">
+<div class="live-summary-top"><h2>Live summaries</h2><span class="live-badge">▣&nbsp; Your recaps</span></div>
+<div class="live-summary-empty"><div class="live-icon" aria-hidden="true">▤</div><div><strong>Your live recaps will appear here</strong><p>After live sessions are connected and recorded, this area can show session title, date, duration, audience statistics and saved highlights.</p></div></div>
+<p class="live-footnote">Summaries and past sessions are not connected to stored live-session data yet. No live broadcast is started from this preview page.</p>
+</section>
+</div>
+</main>
+<footer class="footer">JOINT · Learn, connect, and grow together</footer>
+<script src="navigation.js"></script>
+<script>
+(() => {
+  const hostPanel=document.getElementById('host-live'),joinPanel=document.getElementById('join-live');
+  const hostButton=document.getElementById('open-host-live'),joinButton=document.getElementById('open-join-live');
+  const showPanel=(panel)=>{const isHost=panel===hostPanel;hostPanel.hidden=!isHost;joinPanel.hidden=isHost;hostButton.setAttribute('aria-expanded',String(isHost));joinButton.setAttribute('aria-expanded',String(!isHost));panel.scrollIntoView({behavior:'smooth',block:'start'});};
+  hostButton.addEventListener('click',()=>showPanel(hostPanel));joinButton.addEventListener('click',()=>showPanel(joinPanel));
+})();
+</script>
+<script src="supabase.js"></script>
+<script src="live-stream.js"></script>
+</body></html>
