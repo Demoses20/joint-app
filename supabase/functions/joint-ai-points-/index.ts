@@ -61,7 +61,9 @@ Deno.serve(async (req) => {
         if (purchaseError) throw purchaseError;
         const { data: wallets, error: walletError } = await db.from("joint_ai_point_wallets").select("owner_id,balance,lifetime_purchased,lifetime_spent,is_active,updated_at").order("updated_at", { ascending: false }).limit(100);
         if (walletError) throw walletError;
-        return json({ ok: true, settings, purchases: purchases || [], wallets: wallets || [] }, 200, origin);
+        const { data: ledger, error: ledgerError } = await db.from("joint_ai_point_ledger").select("owner_id,entry_type,points,balance_after,amount_minor,currency,description,source,created_at").order("created_at", { ascending: false }).limit(200);
+        if (ledgerError) throw ledgerError;
+        return json({ ok: true, settings, purchases: purchases || [], wallets: wallets || [], ledger: ledger || [] }, 200, origin);
       }
       if (action === "admin_save") {
         const pointsPerAction = safeNum(body.points_per_ai_start, 1, 10000);
