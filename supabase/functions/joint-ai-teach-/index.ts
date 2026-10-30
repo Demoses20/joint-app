@@ -100,6 +100,22 @@ Deno.serve(async (req) => {
     const memory = text(body.memory, 1200);
     const voiceRequested = Boolean(body.voice);
 
+    // Check the minimum request cost before contacting the AI provider. This
+    // prevents a zero/insufficient-balance wallet from receiving AI teaching.
+    // The final debit below still uses the exact generated response/media cost.
+    const minimumInputWords = (action === "start" ? words(lessonText) : 0) + words(studentResponse);
+    const minimumImageCount = lessonImageUrls.length + (studentImage ? 1 : 0);
+    const minimumPoints = Math.max(1,
+      (action === "start" ? Number(settings.points_per_ai_start || 1) : 0) +
+      ceilDiv(minimumInputWords, Number(settings.text_words_per_point || 500)) +
+      minimumImageCount * Number(settings.points_per_image ?? 2) +
+      ceilDiv(videoFrameCount, Number(settings.video_frames_per_point || 10)) +
+      ceilDiv(voiceNoteSeconds, Number(settings.voice_note_seconds_per_point || 30))
+    );
+    if (Number(wallet.balance || 0) < minimumPoints) {
+      return json({ ok: false, error: `Not enough AI Points to start this teaching request. At least ${minimumPoints} point(s) are required; your school wallet has ${Number(wallet.balance || 0)}. Please top up before continuing.` }, 402, origin);
+    }
+
     const systemPrompt = `You are JOINT's patient interactive AI tutor. Teach the supplied lesson accurately, using the host's instructions and course material as the primary source. Do not claim you watched or analyzed media unless its image frames were supplied. On action=start, introduce the lesson in clear steps and ask a useful question when appropriate. On action=answer, respond to the learner, correct misunderstandings kindly, and continue the lesson. Follow lesson question count/style and assignment type when available. Return ONLY valid JSON with keys: message (string), question (object or null; when present use type, prompt, options), assignment (object or null; use title,instructions), score (number or null), activityType (string), finished (boolean), progressSummary (string), media (array). Do not include markdown fences.`;
     const userText = `ACTION: ${action}\nCOURSE: ${text(course.title, 300)}\nCOURSE DESCRIPTION: ${text(course.description, 1500)}\nLESSON MATERIAL:\n${lessonText}\nHOST AI INSTRUCTIONS: ${text(lesson.aiSettings?.instructions, 5000)}\nQUESTION COUNT: ${Number(lesson.aiSettings?.questionCount ?? 5)}\nQUESTION STYLE: ${text(lesson.aiSettings?.questionStyle, 50)}\nASSIGNMENT TYPE: ${text(lesson.aiSettings?.assignmentType, 50)}\nREFERENCE POLICY: ${text(lesson.aiSettings?.referencePolicy, 50)}\nLEARNER PROGRESS MEMORY: ${memory}\nLEARNER RESPONSE: ${studentResponse || "(No written response supplied; begin the lesson.)"}\nUse only information supported by the lesson and clearly label uncertainty.`;
     const userContent: any[] = [{ type: "text", text: userText }];
@@ -137,7 +153,7 @@ Deno.serve(async (req) => {
     const textWords = (action === "start" ? words(lessonText) : 0) + words(studentResponse) + words(reply);
     const imageCount = lessonImageUrls.length + (studentImage ? 1 : 0);
     const basePoints = action === "start" ? Number(settings.points_per_ai_start || 1) : 0;
-    const points = Math.max(1, basePoints + ceilDiv(textWords, Number(settings.text_words_per_point || 500)) + imageCount * Number(settings.points_per_image || 2) + ceilDiv(generatedVoiceSeconds, Number(settings.voice_seconds_per_point || 30)) + ceilDiv(videoFrameCount, Number(settings.video_frames_per_point || 10)) + ceilDiv(voiceNoteSeconds, Number(settings.voice_note_seconds_per_point || 30)));
+    const points = Math.max(1, basePoints + ceilDiv(textWords, Number(settings.text_words_per_point || 500)) + imageCount * Number(settings.points_per_image ?? 2) + ceilDiv(generatedVoiceSeconds, Number(settings.voice_seconds_per_point || 30)) + ceilDiv(videoFrameCount, Number(settings.video_frames_per_point || 10)) + ceilDiv(voiceNoteSeconds, Number(settings.voice_note_seconds_per_point || 30)));
     const description = `AI lesson ${action}: ${textWords} words, ${imageCount} images, ${videoFrameCount} analyzed video frames, ${generatedVoiceSeconds}s generated voice, ${voiceNoteSeconds}s voice input`;
     const { data: spend, error: spendError } = await db.rpc("joint_spend_ai_points", { p_owner_id: ownerId, p_actor_user_id: auth.user.id, p_points: points, p_source: "ai_lesson", p_source_id: `${courseId}:${lessonId}`, p_idempotency_key: idempotencyKey, p_description: description });
     if (spendError) {
