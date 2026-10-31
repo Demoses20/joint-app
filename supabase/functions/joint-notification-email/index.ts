@@ -25,8 +25,14 @@ Deno.serve(async (req) => {
   }
 
   // This endpoint is intended for a Supabase Database Webhook. Do not expose the service role key to clients.
+  // Use a dedicated webhook secret rather than coupling delivery to the rotating
+  // Supabase service-role JWT stored in the database trigger.
+  const webhookSecret = Deno.env.get("JOINT_NOTIFICATION_WEBHOOK_SECRET");
   const auth = req.headers.get("authorization") || "";
-  if (auth !== `Bearer ${serviceKey}`) return json({ error: "Unauthorized" }, 401);
+  if (!webhookSecret) {
+    return json({ error: "Missing server configuration: JOINT_NOTIFICATION_WEBHOOK_SECRET is required." }, 500);
+  }
+  if (auth !== `Bearer ${webhookSecret}`) return json({ error: "Unauthorized webhook" }, 401);
 
   let payload: Record<string, any>;
   try { payload = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
@@ -50,7 +56,7 @@ Deno.serve(async (req) => {
 
   // Respect email opt-outs and event-specific preferences when the preferences row exists.
   const { data: prefs, error: prefsError } = await db.from("joint_notification_preferences")
-    .select("email_enabled, follows, messages, reactions, mentions_tags, account_logins, payments, meetings, followed_posts, interested_posts")
+    .select("email_enabled, follows, messages, reactions, mentions_tags, account_logins, payments, meetings, followed_posts, interest_posts, courses")
     .eq("user_id", recipientId).maybeSingle();
   if (!prefsError && prefs) {
     const type = String(notification.event_type || notification.notification_type || "system").toLowerCase();
@@ -61,7 +67,8 @@ Deno.serve(async (req) => {
       : type.includes("login") || type.includes("sign_in") ? "account_logins"
       : type.includes("payment") || type.includes("course_paid") ? "payments"
       : type.includes("meeting") ? "meetings"
-      : type.includes("interest") ? "interested_posts"
+      : type.includes("course") || type.includes("lesson") || type.includes("class_start") ? "courses"
+      : type.includes("interest") ? "interest_posts"
       : type.includes("followed_post") || type.includes("new_post") ? "followed_posts" : null;
     if (prefs.email_enabled === false || (prefKey && prefs[prefKey] === false)) {
       return json({ skipped: true, reason: "Email notifications disabled by recipient preferences" });
