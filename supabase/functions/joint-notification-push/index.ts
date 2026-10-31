@@ -41,6 +41,23 @@ Deno.serve(async (req) => {
   const recipientId = notification.recipient_user_id || notification.recipient_id;
   if (!recipientId) return json({ skipped: true, reason: "Notification has no recipient ID" });
 
+  // Respect the recipient's global push setting and event-specific preference.
+  const { data: prefs, error: prefsError } = await db.from("joint_notification_preferences")
+    .select("push_enabled, follows, messages, payments, meetings, courses")
+    .eq("user_id", recipientId).maybeSingle();
+  if (prefsError) return json({ error: "Could not read notification preferences", details: prefsError.message }, 500);
+  if (prefs) {
+    const type = String(notification.event_type || notification.notification_type || "system").toLowerCase();
+    const prefKey = type.includes("follow") || type.includes("live") ? "follows"
+      : type.includes("message") || type.includes("chat") ? "messages"
+      : type.includes("diamond") || type.includes("payment") || type.includes("transaction") ? "payments"
+      : type.includes("meeting") ? "meetings"
+      : type.includes("course") || type.includes("lesson") || type.includes("class_start") ? "courses" : null;
+    if (prefs.push_enabled === false || (prefKey && prefs[prefKey] === false)) {
+      return json({ skipped: true, reason: "Push notifications disabled by recipient preferences" });
+    }
+  }
+
   const { data: subscriptions, error: subscriptionError } = await db.from("joint_push_subscriptions")
     .select("id, endpoint, subscription").eq("user_id", recipientId);
   if (subscriptionError) return json({ error: "Could not load push subscriptions", details: subscriptionError.message }, 500);
