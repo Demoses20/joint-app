@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.joint-branded-media-export]
 verify_jwt = true
+
+[functions.joint-diamond-payout]
+verify_jwt = false
