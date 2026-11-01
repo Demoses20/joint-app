@@ -1,22 +1,23 @@
 {
-  "id": "/index.html",
+  "id": "/",
   "name": "JOINT — Learn, Connect and Grow",
   "short_name": "JOINT",
   "description": "Learn, connect, and grow with JOINT.",
-  "start_url": "/index.html",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#f7f4fc",
   "theme_color": "#6938d1",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
