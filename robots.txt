@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin-
+Disallow: /auth.html
+Disallow: /reset-password.html
+Disallow: /account-appeal.html
+Disallow: /chat.html
+Disallow: /conversation.html
+Disallow: /support.html
+Disallow: /diamond-wallet.html
+Disallow: /my-learning.html
+Disallow: /profile.html
+Disallow: /settings.html
+Disallow: /notifications.html
+Disallow: /school-dashboard.html
+Disallow: /school-
+Disallow: /host-
+Disallow: /learner-classroom.html
+Disallow: /class-room.html
+Disallow: /lesson.html
+Disallow: /course-builder.html
+Disallow: /meeting-room.html
+Disallow: /join-meeting.html
+Disallow: /supabase-test.html
+
+Sitemap: https://myjointapp.com/sitemap.xml
