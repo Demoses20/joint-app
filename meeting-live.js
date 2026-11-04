@@ -1,10 +1,10 @@
-/* JOINT live meeting tools: Supabase-backed room chat/media, presence, moderation and WebRTC mesh. */
+/* JOINT live meeting tools: Bolt Database-backed room chat/media, presence, moderation and WebRTC mesh. */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const params = new URLSearchParams(location.search), meetingId = params.get('meeting');
-  let db, user, meeting, host = false, profile = {}, channel, pollTimer, realtimeConnected = false, localStream, recorder, voiceChunks = [], replyRecorder=null, replyChunks=[], replyTarget=null, joined = false, chatLocked = false;
+  let db, user, meeting, host = false, profile = {}, channel, pollTimer, realtimeConnected = false, localStream, recorder, voiceChunks = [], replyRecorder=null, replyChunks=[], replyTarget=null, joined = false, chatLocked = false, lastRoomSignature = '';
   const peers = new Map(), remoteStreams = new Map(), raisedHands = new Set(), pendingCandidates = new Map(), profileCache = new Map();
   // Keep public STUN servers as a fallback; use short-lived Cloudflare TURN credentials when available.
   let meetingTurnAvailable = false;
@@ -59,13 +59,13 @@
       if($('switch-room-format')) $('switch-room-format').value=meeting.room_type||'Video meeting';
       bindActions(); await joinPresence(); await loadMessages(); await loadParticipants(); await loadMaterials();
       await connectRealtime();
-      // Keep room updates working if Supabase Realtime is not enabled or its channel is blocked.
+      // Keep room updates working if Bolt Database Realtime is not enabled or its channel is blocked.
       pollTimer=setInterval(()=>{loadParticipants();if(!realtimeConnected)loadMessages();},realtimeConnected?12000:5000);
       joined=true;
       const fmt=meeting.room_type||'Video meeting';
       const desc=$('stage-description'); if(desc) desc.textContent=fmt+' · Live room connected. Start camera/microphone if this format uses audio/video.';
       const title=$('stage-title'); if(title) title.textContent=meeting.title||'Meeting stage';
-    } catch(e){console.error('Meeting live tools failed',e);say('Live tools could not start: '+friendly(e)+'. Run the included SQL migration and check Supabase policies.',true);}
+    } catch(e){console.error('Meeting live tools failed',e);say('Live tools could not start: '+friendly(e)+'. Run the included SQL migration and check Bolt Database policies.',true);}
   }
   function bindActions(){
     $('room-chat-form')?.addEventListener('submit',sendText);
@@ -81,7 +81,6 @@
     $('live-media-grid')?.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-focus-user]')){e.preventDefault();focusMedia(e.target.dataset.focusUser);}});
     $('focus-close')?.addEventListener('click',closeFocus);
     $('live-media-focus')?.addEventListener('click',e=>{if(e.target.id==='live-media-focus')closeFocus();});
-    $('add-material')?.addEventListener('click',addMaterial);
     window.addEventListener('beforeunload',cleanup);
   }
   function applyChatLockUI(){
@@ -170,6 +169,11 @@
     if(ids.length){const p=await db.from('joint_profiles').select('*').in('id',ids);(p.data||[]).forEach(x=>profiles[x.id]=x);}
     const messageIds=rows.map(x=>x.id);let reactions=[];
     if(messageIds.length){const rr=await db.from('joint_meeting_message_reactions').select('message_id,user_id,reaction').in('message_id',messageIds);if(!rr.error)reactions=rr.data||[];}
+    // Rebuilding the chat recreates every voice note and video player. Skip the rebuild when nothing changed.
+    // The time bucket refreshes signed media links before they expire.
+    const signature=JSON.stringify([Math.floor(Date.now()/(30*60*1000)),rows.map(m=>[m.id,m.body,m.media_path,m.reply_to_message_id]),reactions.map(x=>[x.message_id,x.user_id,x.reaction])]);
+    if(signature===lastRoomSignature&&target.childElementCount)return;
+    lastRoomSignature=signature;
     const chatRows=rows.filter(m=>m.message_type!=='link');const roots=chatRows.filter(m=>!m.reply_to_message_id), replies=chatRows.filter(m=>m.reply_to_message_id);
     const reactionChoices=[['👍','Up like'],['👎','Down like'],['❤️','Love'],['🗳️','Vote'],['😡','Angry'],['😊','Happy'],['😂','Laugh'],['😢','Cry'],['🫂','Care']];
     const reactionsFor=m=>{const list=reactions.filter(x=>String(x.message_id)===String(m.id));const counts=reactionChoices.map(([emoji,label])=>{const matching=list.filter(x=>x.reaction===emoji);return matching.length?`<button type="button" class="room-reaction-count ${matching.some(x=>x.user_id===user.id)?'is-mine':''}" data-react="${esc(m.id)}" data-emoji="${emoji}" title="${label}">${emoji} <span>${matching.length}</span></button>`:''}).join('');return `<div class="room-reactions"><button type="button" class="room-reaction-open secondary" data-reaction-open="${esc(m.id)}" aria-label="React to message" title="Add reaction">＋</button><div class="room-reaction-picker" data-reaction-picker="${esc(m.id)}" hidden>${reactionChoices.map(([emoji,label])=>`<button type="button" data-react="${esc(m.id)}" data-emoji="${emoji}" title="${label}" aria-label="${label}">${emoji}</button>`).join('')}</div>${counts}</div>`;};
@@ -227,7 +231,7 @@
       const ext=(file.name.split('.').pop()||'bin').replace(/[^a-z0-9]/gi,'').toLowerCase()||'bin';
       const path=`room/${meetingId}/${user.id}/${crypto.randomUUID()}.${ext}`;
       const uploadPromise=db.storage.from('joint-meeting-media').upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false,cacheControl:'3600'});
-      const up=await Promise.race([uploadPromise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Upload timed out. Check your connection, video size and Supabase Storage limits, then try again.')),120000))]);
+      const up=await Promise.race([uploadPromise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Upload timed out. Check your connection, video size and Bolt Database Storage limits, then try again.')),120000))]);
       if(up.error)throw up.error;uploadedPath=path;
       const type=file.type.startsWith('image/')?'image':'video';
       const payload={meeting_id:meetingId,user_id:user.id,display_name:profile.display_name||user.email?.split('@')[0]||'JOINT member',message_type:type,media_path:path,body:file.name};if(replyToId)payload.reply_to_message_id=replyToId;
@@ -291,7 +295,6 @@
   }
   async function startReplyVoice(messageId){if(await chatWriteBlocked())return setStatus('upload-status','The host has locked the chat. Only the host can write or upload.',true);if(replyRecorder&&replyRecorder.state!=='inactive')return setStatus('upload-status','Finish the current voice reply first.',true);if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)return setStatus('upload-status','Voice recording is not supported by this browser.',true);try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});replyChunks=[];replyTarget=messageId;replyRecorder=new MediaRecorder(stream);replyRecorder.ondataavailable=e=>{if(e.data.size)replyChunks.push(e.data);};replyRecorder.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());const blob=new Blob(replyChunks,{type:replyRecorder.mimeType||'audio/webm'});const file=new File([blob],`voice-reply.${blob.type.includes('mp4')?'m4a':'webm'}`,{type:blob.type});const target=replyTarget;replyRecorder=null;replyTarget=null;if(blob.size)await uploadAudio(file,target);};replyRecorder.start();const form=document.querySelector(`[data-reply-form="${CSS.escape(messageId)}"]`);const start=form?.querySelector('[data-reply-voice-start]'),stop=form?.querySelector('[data-reply-voice-stop]');if(start)start.hidden=true;if(stop)stop.hidden=false;setStatus('upload-status','Recording voice reply… tap Stop & send voice reply when finished.');}catch(e){setStatus('upload-status','Microphone permission failed: '+friendly(e),true);}}
   function stopReplyVoice(){if(replyRecorder&&replyRecorder.state!=='inactive'){const target=replyTarget,form=document.querySelector(`[data-reply-form="${CSS.escape(target)}"]`);if(form){const start=form.querySelector('[data-reply-voice-start]'),stop=form.querySelector('[data-reply-voice-stop]');if(start)start.hidden=false;if(stop)stop.hidden=true;}replyRecorder.stop();}}
-  async function addMaterial(){const input=$('room-material'),url=input?.value.trim();if(!url)return;try{const parsed=new URL(url);if(!['https:','http:'].includes(parsed.protocol))throw new Error('Use a valid http or https link.');const r=await db.from('joint_meeting_room_messages').insert({meeting_id:meetingId,user_id:user.id,display_name:profile.display_name||'JOINT member',message_type:'link',body:url,media_url:url});if(r.error)throw r.error;input.value='';await loadMaterials();await loadMessages();}catch(e){alert('Could not add link: '+friendly(e));}}
   function parseMaterial(body){
     try{const x=JSON.parse(body);if(x&&typeof x==='object'&&x.url)return {title:String(x.title||x.url),url:String(x.url)};}catch(_){}
     return {title:String(body||'Shared link'),url:String(body||'')};
