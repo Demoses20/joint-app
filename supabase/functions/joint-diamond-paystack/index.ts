@@ -41,17 +41,20 @@ Deno.serve(async (req) => {
   const action = text(body.action, 30);
   try {
     if (action === "initialize") {
-      const amountMinor = Number(body.amount_minor);
+      const bundle = Number(body.diamond_bundle);
       const currency = text(body.currency, 3).toUpperCase();
-      if (!Number.isSafeInteger(amountMinor) || amountMinor < 10000 || amountMinor > 100000000000) return json({ ok: false, error: "Enter a purchase amount of at least 100 currency units and within the allowed limit." }, 400, origin);
+      const allowedBundles = [5, 10, 25, 50, 100, 250, 500, 750, 1000];
+      if (!Number.isInteger(bundle) || !allowedBundles.includes(bundle)) return json({ ok: false, error: "Choose one of the available Diamond bundles (5–1,000)." }, 400, origin);
       if (currency !== "NGN" && currency !== "USD") return json({ ok: false, error: "Choose NGN or USD." }, 400, origin);
       const { data: pricing, error: pricingError } = await db.from("joint_diamond_pricing_settings").select("diamonds_per_ngn,diamonds_per_usd,enabled").eq("id", "global").maybeSingle();
       if (pricingError) throw pricingError;
       const rate = Number(currency === "USD" ? pricing?.diamonds_per_usd : pricing?.diamonds_per_ngn);
       if (!pricing?.enabled || !Number.isFinite(rate) || rate <= 0) return json({ ok: false, error: "Diamond pricing is not enabled or its conversion rate is missing. Ask the JOINT administrator to configure Diamond pricing." }, 503, origin);
-      const rawDiamonds = (amountMinor / 100) * rate;
-      const diamonds = Math.floor((rawDiamonds + Number.EPSILON) * 10000) / 10000;
-      if (!Number.isFinite(diamonds) || diamonds < 0.0001 || diamonds > 9999999999999999) return json({ ok: false, error: "This amount purchases less than 0.0001 Diamond at the current conversion rate. Increase the payment amount." }, 400, origin);
+      // Compute the fiat amount server-side from the selected bundle and saved conversion rate.
+      // Round up to the smallest currency unit so the selected bundle is fully covered.
+      const amountMinor = Math.ceil((bundle / rate) * 100 - Number.EPSILON);
+      if (!Number.isSafeInteger(amountMinor) || amountMinor < 1 || amountMinor > 100000000000) return json({ ok: false, error: "This bundle is outside the permitted purchase amount." }, 400, origin);
+      const diamonds = bundle;
       const reference = `jwd_${crypto.randomUUID().replaceAll("-", "")}`;
       const { error: insertError } = await db.from("joint_diamond_paystack_purchases").insert({ user_id: auth.user.id, reference, amount_minor: amountMinor, currency, diamond_amount: diamonds, status: "pending" });
       if (insertError) throw insertError;
