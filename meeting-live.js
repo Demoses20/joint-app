@@ -116,10 +116,42 @@
     if(!r.error&&r.data){chatLocked=!!r.data.chat_locked;meeting.chat_locked=chatLocked;applyChatLockUI();}
     return chatLocked;
   }
-  async function joinPresence(){
-    const row={meeting_id:meetingId,user_id:user.id,display_name:profile.display_name||user.user_metadata?.display_name||user.email?.split('@')[0]||'JOINT member',avatar_url:profile.avatar_url||profile.photo_url||null,is_muted:false,is_kicked:false,left_at:null,joined_at:new Date().toISOString()};
-    const r=await db.from('joint_meeting_live_participants').upsert(row,{onConflict:'meeting_id,user_id'});
-    if(r.error) throw r.error;
+  async function joinPresence() {
+    const displayName =
+        profile.display_name ||
+        user.user_metadata?.display_name ||
+        user.email?.split('@')[0] ||
+        'JOINT member';
+
+    const avatarUrl =
+        profile.avatar_url ||
+        profile.photo_url ||
+        null;
+
+    const inviteCode =
+        meeting.visibility === 'private'
+            ? sessionStorage.getItem(
+                'joint-private-meeting-code:' + meetingId
+              ) || ''
+            : '';
+
+    const { data, error } = await db.rpc(
+        'joint_register_meeting_live_participant',
+        {
+            p_meeting_id: meetingId,
+            p_display_name: displayName,
+            p_avatar_url: avatarUrl,
+            p_invite_code: inviteCode
+        }
+    );
+
+    if (error) {
+        throw error;
+    }
+
+    if (!data?.ok) {
+        throw new Error('Unable to register meeting presence.');
+    }
   }
   async function connectRealtime(){
     channel=db.channel('joint-live-'+meetingId,{config:{broadcast:{self:false}}});
