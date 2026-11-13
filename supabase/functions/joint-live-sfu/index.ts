@@ -85,13 +85,30 @@ Deno.serve(async (req) => {
     }
     if (action === "create-session") {
       if (!isPublisher && live.audience !== "public" && live.audience !== "followers") return json({ ok: false, error: "You are not allowed to connect to this live session." }, 403, origin);
+      // Read the previous per-user SFU connection before replacing it. Android
+      // tab suspension/reload can leave an old Cloudflare session behind.
+      const { data: previous, error: previousError } = await db.from("joint_live_sfu_connections")
+        .select("cloudflare_session_id,track_names")
+        .eq("live_session_id", liveId).eq("user_id", auth.user.id).maybeSingle();
+      if (previousError) throw previousError;
       const sfu = await sfuRequest(appId, appSecret, "/sessions/new", "POST");
+      if (!sfu.sessionId) throw new Error("Cloudflare did not return a new live connection ID.");
       const row = { live_session_id: liveId, user_id: auth.user.id, role: isPublisher ? (isHost ? "host" : participant?.role || "guest") : "viewer", cloudflare_session_id: sfu.sessionId, track_names: [], updated_at: new Date().toISOString() };
       const { error: saveError } = await db.from("joint_live_sfu_connections").upsert(row, { onConflict: "live_session_id,user_id" });
       if (saveError) {
-        // Best-effort cleanup so failed DB persistence does not leave a dangling SFU session.
         try { await sfuRequest(appId, appSecret, `/sessions/${encodeURIComponent(sfu.sessionId)}/tracks/close`, "PUT", { tracks: [] }); } catch (_) {}
         throw saveError;
+      }
+      // Close the old Cloudflare media tracks only after the new connection
+      // has been persisted successfully, so a failed replacement cannot strand
+      // the user's existing publication.
+      if (previous?.cloudflare_session_id && previous.cloudflare_session_id !== sfu.sessionId) {
+        try {
+          const oldTracks = Array.isArray(previous.track_names) ? previous.track_names.map((trackName: string) => ({ trackName })) : [];
+          await sfuRequest(appId, appSecret, `/sessions/${encodeURIComponent(previous.cloudflare_session_id)}/tracks/close`, "PUT", { tracks: oldTracks });
+        } catch (cleanupError) {
+          console.warn("Could not close previous JOINT Live SFU connection", cleanupError instanceof Error ? cleanupError.message : cleanupError);
+        }
       }
       return json({ ok: true, session_id: sfu.sessionId, role: row.role }, 200, origin);
     }
