@@ -37,16 +37,32 @@ Deno.serve(async (req) => {
   const { data: auth, error: authError } = await userDb.auth.getUser(token);
   if (authError || !auth.user) return json({ ok: false, error: "Session expired. Sign in again." }, 401, origin);
   const db = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+  async function requireNigeria(userId: string) {
+    const { data: preferences, error: preferencesError } = await db
+      .from("joint_user_preferences")
+      .select("settings")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (preferencesError) throw preferencesError;
+    const country = str(preferences?.settings?.country, 80).toUpperCase();
+    if (!["NG", "NIGERIA"].includes(country)) {
+      throw new Error(country
+        ? "Only users with Nigeria saved in JOINT Settings can use Nigerian bank payouts."
+        : "Please select and save Nigeria in JOINT Settings before using Nigerian bank payouts.");
+    }
+  }
   let body: any;
   try { body = await req.json(); } catch { return json({ ok: false, error: "Invalid request body." }, 400, origin); }
   const action = str(body.action, 40);
   const isAdmin = (auth.user.email || "").toLowerCase() === ADMIN_EMAIL;
   try {
     if (action === "banks") {
+      await requireNigeria(auth.user.id);
       const banks = await paystack("/bank?country=nigeria&currency=NGN&perPage=200", secret);
       return json({ ok: true, banks: (banks || []).map((b: any) => ({ name: b.name, code: b.code, active: b.active !== false })).filter((b: any) => b.code && b.active) }, 200, origin);
     }
     if (action === "resolve-account") {
+      await requireNigeria(auth.user.id);
       const account = str(body.account_number, 10);
       const bankCode = str(body.bank_code, 12);
       if (!/^\d{10}$/.test(account) || !/^\d{2,6}$/.test(bankCode)) return json({ ok: false, error: "Enter a valid 10-digit Nigerian account number and select a bank." }, 400, origin);
@@ -60,7 +76,8 @@ Deno.serve(async (req) => {
       const { data: request, error } = await db.from("joint_diamond_payout_requests").select("*").eq("id", requestId).maybeSingle();
       if (error) throw error;
       if (!request) return json({ ok: false, error: "Payout request not found." }, 404, origin);
-      if (String(request.currency).toUpperCase() !== "NGN" || String(request.method_label).toLowerCase().indexOf("bank") < 0) return json({ ok: false, error: "Only Nigerian bank-transfer payout requests can use Paystack." }, 400, origin);
+      await requireNigeria(request.user_id);
+      if (String(request.currency).toUpperCase() !== "NGN" || String(request.payout_currency).toUpperCase() !== "NGN" || String(request.payout_provider).toLowerCase() !== "paystack" || String(request.method_label).toLowerCase().indexOf("bank") < 0) return json({ ok: false, error: "Only Nigerian NGN bank-transfer requests assigned to Paystack can be processed here." }, 400, origin);
       if (["processing", "paid"].includes(request.status) || request.paystack_transfer_code || request.payout_reference) return json({ ok: false, error: "A Paystack transfer has already been initiated or recorded for this request. Verify its status instead of sending again." }, 409, origin);
       if (!(["pending", "approved"].includes(request.status))) return json({ ok: false, error: `This request cannot be paid from status ${request.status}.` }, 409, origin);
       const meta = request.payout_metadata || {};
@@ -101,8 +118,11 @@ Deno.serve(async (req) => {
     if (action === "finalize") {
       const requestId = str(body.request_id, 50), otp = str(body.otp, 12);
       if (!/^[0-9a-f-]{36}$/i.test(requestId) || !/^\d{4,8}$/.test(otp)) return json({ ok: false, error: "Enter the payout request and valid OTP." }, 400, origin);
-      const { data: request, error } = await db.from("joint_diamond_payout_requests").select("paystack_transfer_code,payout_reference,status").eq("id", requestId).maybeSingle();
+      const { data: request, error } = await db.from("joint_diamond_payout_requests").select("user_id,currency,payout_currency,payout_provider,paystack_transfer_code,payout_reference,status").eq("id", requestId).maybeSingle();
       if (error) throw error;
+      if (!request) return json({ ok: false, error: "Payout request not found." }, 404, origin);
+      await requireNigeria(request.user_id);
+      if (String(request.currency).toUpperCase() !== "NGN" || String(request.payout_currency).toUpperCase() !== "NGN" || String(request.payout_provider).toLowerCase() !== "paystack") return json({ ok: false, error: "Only Nigerian NGN Paystack transfers can be finalized here." }, 400, origin);
       if (!request?.paystack_transfer_code || request.status !== "processing") return json({ ok: false, error: "No OTP-pending transfer was found for this request." }, 409, origin);
       const result = await paystack("/transfer/finalize_transfer", secret, "POST", { transfer_code: request.paystack_transfer_code, otp });
       await db.from("joint_diamond_payout_requests").update({ payout_metadata: { otp_finalize_status: result.status, otp_finalize_message: result.message || null } }).eq("id", requestId);
@@ -111,8 +131,11 @@ Deno.serve(async (req) => {
     if (action === "verify") {
       const requestId = str(body.request_id, 50);
       if (!/^[0-9a-f-]{36}$/i.test(requestId)) return json({ ok: false, error: "Invalid payout request." }, 400, origin);
-      const { data: request, error } = await db.from("joint_diamond_payout_requests").select("id,status,payout_reference,payout_metadata,payout_net_amount,payout_currency").eq("id", requestId).maybeSingle();
+      const { data: request, error } = await db.from("joint_diamond_payout_requests").select("id,user_id,status,currency,payout_provider,payout_reference,payout_metadata,payout_net_amount,payout_currency").eq("id", requestId).maybeSingle();
       if (error) throw error;
+      if (!request) return json({ ok: false, error: "Payout request not found." }, 404, origin);
+      await requireNigeria(request.user_id);
+      if (String(request.currency).toUpperCase() !== "NGN" || String(request.payout_currency).toUpperCase() !== "NGN" || String(request.payout_provider).toLowerCase() !== "paystack") return json({ ok: false, error: "Only Nigerian NGN Paystack transfers can be verified here." }, 400, origin);
       if (!request?.payout_reference) return json({ ok: false, error: "No Paystack transfer reference exists for this request." }, 404, origin);
       const transfer = await paystack(`/transfer/verify/${encodeURIComponent(request.payout_reference)}`, secret);
       const status = str(transfer.status, 30).toLowerCase();
