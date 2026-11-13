@@ -154,9 +154,17 @@ Deno.serve(async (req) => {
 
     if (action === "publish") {
       if (!isPublisher || !["host", "guest"].includes(connection.role)) return json({ ok: false, error: "Only the host and accepted on-screen guest can publish media." }, 403, origin);
-      const description = body.session_description;
-      const tracks = Array.isArray(body.tracks) ? body.tracks : [];
-      if (!description || description.type !== "offer" || typeof description.sdp !== "string" || !tracks.length || tracks.length > 4) return json({ ok: false, error: "A valid WebRTC offer and one to four local track descriptors are required." }, 400, origin);
+      // Accept the canonical snake_case payload and equivalent camelCase
+      // payloads from older JOINT clients, then validate one normalized shape.
+      const rawDescription = body.session_description ?? body.sessionDescription ?? body.offer;
+      const description = rawDescription && typeof rawDescription === "object"
+        ? { type: rawDescription.type, sdp: rawDescription.sdp }
+        : null;
+      const rawTracks = body.tracks ?? body.local_tracks;
+      const tracks = Array.isArray(rawTracks) ? rawTracks : [];
+      if (!description || description.type !== "offer" || typeof description.sdp !== "string" || !description.sdp.trim() || !tracks.length || tracks.length > 4) {
+        return json({ ok: false, error: "Guest media offer is incomplete. The browser must send a WebRTC offer and one to four local camera/microphone track descriptors." }, 400, origin);
+      }
       for (const track of tracks) if (track.location !== "local" || !/^[0-9]{1,3}$/.test(String(track.mid)) || !["camera", "microphone", "screen"].includes(String(track.trackName))) return json({ ok: false, error: "Invalid local track descriptor." }, 400, origin);
       const result = await sfuRequest(appId, appSecret, `/sessions/${cloudSession}/tracks/new`, "POST", { sessionDescription: description, tracks });
       const successfulNames = (result.tracks || []).filter((t: any) => !t.errorCode && !t.error).map((t: any) => t.trackName).filter(Boolean);
