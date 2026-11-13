@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       const reference = `joint_diamond_${request.id.replaceAll("-", "")}`;
       const gross = Number(request.payout_gross_amount);
       const net = Number(request.payout_net_amount);
-      if (!Number.isFinite(gross) || !Number.isFinite(net) || gross < 20000 || net < 1 || Math.round(net * 100) !== net * 100) return json({ ok: false, error: "The saved payout amount is missing or invalid. Reconcile the request before initiating a transfer." }, 400, origin);
+      if (!Number.isFinite(gross) || !Number.isFinite(net) || gross <= 0 || net < 50 || Math.round(net * 100) !== net * 100) return json({ ok: false, error: "The saved payout amount is invalid or the net NGN transfer is below Paystack’s ₦50 minimum. Reconcile the request before initiating a transfer." }, 400, origin);
       // Persist a stable reference before calling Paystack. A retry uses the same reference and must be verified, never blindly re-sent.
       const { data: claimed, error: claimError } = await db.from("joint_diamond_payout_requests").update({ status: "processing", payout_provider: "paystack", payout_reference: reference, payout_currency: "NGN", processed_by: auth.user.id, processed_at: new Date().toISOString() }).eq("id", request.id).in("status", ["pending", "approved"]).is("payout_reference", null).select("id").maybeSingle();
       if (claimError) throw claimError;
