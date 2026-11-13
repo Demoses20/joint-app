@@ -22,6 +22,29 @@ async function sfuRequest(appId: string, secret: string, path: string, method = 
   return payload;
 }
 
+async function createTurnIceServers(turnKeyId: string, turnApiToken: string) {
+  const response = await fetch(
+    `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(turnKeyId)}/credentials/generate-ice-servers`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${turnApiToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ttl: 86400 }),
+      signal: AbortSignal.timeout(15000),
+    },
+  );
+  const payload: any = await response.json().catch(() => ({}));
+  if (!response.ok || !Array.isArray(payload.iceServers) || payload.iceServers.length === 0) {
+    console.error("Cloudflare TURN credential generation failed", response.status, payload);
+    throw new Error(payload.errorDescription || payload.error || `Cloudflare TURN credential generation failed (${response.status}).`);
+  }
+  // Avoid the browser-incompatible alternate DNS port listed by Cloudflare.
+  return payload.iceServers.map((server: any) => {
+    const urls = (Array.isArray(server.urls) ? server.urls : [server.urls]).filter(Boolean)
+      .filter((url: string) => !String(url).includes(":53?"));
+    return { ...server, urls };
+  }).filter((server: any) => Array.isArray(server.urls) && server.urls.length > 0);
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors(origin, req.headers.get("access-control-request-headers")) });
@@ -59,7 +82,7 @@ Deno.serve(async (req) => {
     if (!live || live.status !== "live") return json({ ok: false, error: "This JOINT Live session is not active." }, 404, origin);
 
     const { data: participant, error: participantError } = await db.from("joint_live_participants")
-      .select("id,role,status,user_id").eq("session_id", liveId).eq("user_id", auth.user.id).maybeSingle();
+      .select("id,role,status,user_id").eq("session_id", liveId).eq("user_id", auth.user.id).limit(1).maybeSingle();
     if (participantError) throw participantError;
     const isHost = live.host_user_id === auth.user.id;
     const isConnectedParticipant = participant?.status === "connected" && (participant.role === "host" || participant.role === "guest");
@@ -85,6 +108,15 @@ Deno.serve(async (req) => {
     }
     if (action === "create-session") {
       if (!isPublisher && live.audience !== "public" && live.audience !== "followers") return json({ ok: false, error: "You are not allowed to connect to this live session." }, 403, origin);
+      // Accept the existing JOINT/Supabase secret names as well as the
+      // alternate names used in earlier setup instructions. Values remain
+      // server-side and are never returned to the browser.
+      const turnKeyId = Deno.env.get("CLOUDFLARE_TURN_TOKEN_ID") || Deno.env.get("CLOUDFLARE_TURN_KEY_ID");
+      const turnApiToken = Deno.env.get("CLOUDFLARE_TURN_API_TOKEN") || Deno.env.get("CLOUDFLARE_TURN_KEY_API_TOKEN");
+      if (!turnKeyId || !turnApiToken) {
+        return json({ ok: false, error: "JOINT Live TURN relay secrets are missing. Expected CLOUDFLARE_TURN_TOKEN_ID and CLOUDFLARE_TURN_API_TOKEN (or the equivalent CLOUDFLARE_TURN_KEY_ID and CLOUDFLARE_TURN_KEY_API_TOKEN)." }, 503, origin);
+      }
+      const iceServers = await createTurnIceServers(turnKeyId, turnApiToken);
       // Read the previous per-user SFU connection before replacing it. Android
       // tab suspension/reload can leave an old Cloudflare session behind.
       const { data: previous, error: previousError } = await db.from("joint_live_sfu_connections")
@@ -110,7 +142,7 @@ Deno.serve(async (req) => {
           console.warn("Could not close previous JOINT Live SFU connection", cleanupError instanceof Error ? cleanupError.message : cleanupError);
         }
       }
-      return json({ ok: true, session_id: sfu.sessionId, role: row.role }, 200, origin);
+      return json({ ok: true, session_id: sfu.sessionId, role: row.role, iceServers }, 200, origin);
     }
 
     const { data: connection, error: connectionError } = await db.from("joint_live_sfu_connections")
