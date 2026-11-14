@@ -79,8 +79,18 @@ Deno.serve(async (req) => {
       if (purchaseError) throw purchaseError;
       if (!purchase) return json({ ok: false, error: "This purchase reference does not belong to your account." }, 404, origin);
       if (purchase.status === "successful") {
-        const { data: wallet } = await db.from("joint_diamond_wallets").select("balance").eq("user_id", auth.user.id).maybeSingle();
-        return json({ ok: true, paid: true, already_credited: true, diamonds: purchase.diamond_amount, balance: wallet?.balance ?? null, reference }, 200, origin);
+        const { data: wallet, error: walletError } = await db.from("joint_diamond_wallets").select("balance,purchase_balance,earnings_balance").eq("user_id", auth.user.id).maybeSingle();
+        if (walletError) throw walletError;
+        return json({
+          ok: true,
+          paid: true,
+          already_credited: true,
+          diamonds: purchase.diamond_amount,
+          balance: wallet?.balance ?? null,
+          purchase_balance: wallet?.purchase_balance ?? null,
+          earnings_balance: wallet?.earnings_balance ?? null,
+          reference,
+        }, 200, origin);
       }
       if (purchase.status !== "pending") return json({ ok: false, paid: false, error: "This purchase is not pending. If money was deducted, contact JOINT support with reference " + reference }, 409, origin);
       const verified = await paystack(`/transaction/verify/${encodeURIComponent(reference)}`, secret);
@@ -93,7 +103,16 @@ Deno.serve(async (req) => {
       const { data: credited, error: creditError } = await db.rpc("joint_diamond_credit_paystack_purchase", { p_reference: reference, p_paystack_transaction_id: String(transaction.id ?? "") });
       if (creditError) throw creditError;
       if (!credited?.ok) throw new Error(credited?.error || "Payment verified but wallet credit could not be completed.");
-      return json({ ok: true, paid: true, already_credited: !!credited.already_credited, diamonds: credited.diamonds, balance: credited.balance, reference }, 200, origin);
+      return json({
+        ok: true,
+        paid: true,
+        already_credited: !!credited.already_credited,
+        diamonds: credited.diamonds,
+        balance: credited.balance,
+        purchase_balance: credited.purchase_balance,
+        earnings_balance: credited.earnings_balance,
+        reference,
+      }, 200, origin);
     }
     return json({ ok: false, error: "Unknown Diamond Paystack action." }, 400, origin);
   } catch (e) {
