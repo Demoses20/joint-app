@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
       });
       if (purchaseError) throw new Error(purchaseError.message || "Could not complete the Diamond AI Points purchase.");
       if (!result?.ok) throw new Error(text(result?.error || "AI Points purchase was not completed.", 200));
-      return json({ ok: true, points: result.points || points, diamonds: result.diamonds || diamonds, balance: result.balance, reference: result.reference, ai_points_balance: result.ai_points_balance }, 200, origin);
+      return json({ ok: true, points: result.points || points, diamonds: result.diamonds || diamonds, balance: result.balance, purchase_balance: result.purchase_balance, earnings_balance: result.earnings_balance, reference: result.reference, ai_points_balance: result.ai_points_balance }, 200, origin);
     }
 
     if (action === "initialize" || action === "verify") {
