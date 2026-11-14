@@ -346,10 +346,10 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
             BillingFlowParams.ProductDetailsParams.newBuilder()
                 .setProductDetails(details)
                 .apply {
-                    if (!offer?.offerToken.isNullOrBlank()) {
-                        setOfferToken(offer!!.offerToken)
-                    }
-                }
+    offer?.offerToken
+        ?.takeIf { it.isNotBlank() }
+        ?.let { setOfferToken(it) }
+}
                 .build()
 
         val builder = BillingFlowParams.newBuilder()
