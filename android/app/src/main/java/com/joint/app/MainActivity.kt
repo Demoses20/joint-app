@@ -1,4 +1,3 @@
-
 package com.joint.app
 
 import android.annotation.SuppressLint
