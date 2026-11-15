@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -16,6 +17,7 @@ import android.os.Bundle
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.ValueCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.WebMessageCompat
@@ -50,6 +52,8 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     private var pendingWebPermissionRequest: PermissionRequest? = null
     private lateinit var mediaPermissionLauncher: ActivityResultLauncher<Array<String>>
     private lateinit var notificationPermissionLauncher: ActivityResultLauncher<String>
+    private lateinit var fileChooserLauncher: ActivityResultLauncher<Intent>
+    private var pendingFileChooserCallback: ValueCallback<Array<Uri>>? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,10 +69,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 if (request != null) {
                     val stillTrusted =
                         request.origin.scheme == "https" &&
-                        request.origin.host in listOf(
-                            "myjointapp.com",
-                            "www.myjointapp.com"
-                        )
+                        request.origin.host in listOf("myjointapp.com", "www.myjointapp.com")
 
                     val resourcesToGrant = request.resources.filter { resource ->
                         when (resource) {
@@ -77,13 +78,11 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                                     this@MainActivity,
                                     Manifest.permission.CAMERA
                                 ) == PackageManager.PERMISSION_GRANTED
-
                             PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
                                 ContextCompat.checkSelfPermission(
                                     this@MainActivity,
                                     Manifest.permission.RECORD_AUDIO
                                 ) == PackageManager.PERMISSION_GRANTED
-
                             else -> false
                         }
                     }
@@ -105,28 +104,70 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 ActivityResultContracts.RequestPermission()
             ) { /* The operating system records the user's choice. */ }
 
+        fileChooserLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result: ActivityResult ->
+            val callback = pendingFileChooserCallback
+            pendingFileChooserCallback = null
+
+            if (callback != null) {
+                val selectedFiles = if (result.resultCode == RESULT_OK) {
+                    WebChromeClient.FileChooserParams.parseResult(
+                        result.resultCode,
+                        result.data
+                    )
+                } else {
+                    null
+                }
+                callback.onReceiveValue(selectedFiles)
+            }
+        }
+
         webView = WebView(this)
         setContentView(webView)
 
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.allowFileAccess = false
-        webView.settings.allowContentAccess = false
+        // Required for user-selected content:// URIs returned by Android's picker.
+        // File-system access remains disabled; access is limited to picked content.
+        webView.settings.allowContentAccess = true
         webView.settings.mixedContentMode =
             android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
 
-        webView.settings.mediaPlaybackRequiresUserGesture = false
-
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onShowFileChooser(
+                view: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                if (filePathCallback == null || fileChooserParams == null) {
+                    return false
+                }
+
+                // Complete any previous chooser request before opening a new one.
+                pendingFileChooserCallback?.onReceiveValue(null)
+                pendingFileChooserCallback = filePathCallback
+
+                return try {
+                    val pickerIntent = fileChooserParams.createIntent()
+                    fileChooserLauncher.launch(
+                        Intent.createChooser(pickerIntent, "Select image or video")
+                    )
+                    true
+                } catch (_: Exception) {
+                    pendingFileChooserCallback = null
+                    filePathCallback.onReceiveValue(null)
+                    false
+                }
+            }
+
             override fun onPermissionRequest(request: PermissionRequest) {
                 runOnUiThread {
                     val origin = request.origin
                     val trustedOrigin =
                         origin.scheme == "https" &&
-                        origin.host in listOf(
-                            "myjointapp.com",
-                            "www.myjointapp.com"
-                        )
+                        origin.host in listOf("myjointapp.com", "www.myjointapp.com")
 
                     if (!trustedOrigin) {
                         request.deny()
@@ -144,7 +185,6 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     }
 
                     val missingPermissions = mutableListOf<String>()
-
                     if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in requestedResources &&
                         ContextCompat.checkSelfPermission(
                             this@MainActivity,
@@ -153,7 +193,6 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     ) {
                         missingPermissions.add(Manifest.permission.CAMERA)
                     }
-
                     if (PermissionRequest.RESOURCE_AUDIO_CAPTURE in requestedResources &&
                         ContextCompat.checkSelfPermission(
                             this@MainActivity,
@@ -170,15 +209,11 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                             request.deny()
                         }
                     } else {
-                        pendingWebPermissionRequest?.let {
-                            try {
-                                it.deny()
-                            } catch (_: Exception) {}
+                        pendingWebPermissionRequest?.let { previous ->
+                            try { previous.deny() } catch (_: Exception) {}
                         }
                         pendingWebPermissionRequest = request
-                        mediaPermissionLauncher.launch(
-                            missingPermissions.distinct().toTypedArray()
-                        )
+                        mediaPermissionLauncher.launch(missingPermissions.distinct().toTypedArray())
                     }
                 }
             }
@@ -507,10 +542,10 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
             BillingFlowParams.ProductDetailsParams.newBuilder()
                 .setProductDetails(details)
                 .apply {
-                    offer?.offerToken
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let { setOfferToken(it) }
-                }
+    offer?.offerToken
+        ?.takeIf { it.isNotBlank() }
+        ?.let { setOfferToken(it) }
+}
                 .build()
 
         val builder = BillingFlowParams.newBuilder()
@@ -654,6 +689,13 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     }
 
     override fun onDestroy() {
+        pendingFileChooserCallback?.onReceiveValue(null)
+        pendingFileChooserCallback = null
+        pendingWebPermissionRequest?.let {
+            try { it.deny() } catch (_: Exception) {}
+        }
+        pendingWebPermissionRequest = null
+
         if (::billingClient.isInitialized) {
             billingClient.endConnection()
         }
