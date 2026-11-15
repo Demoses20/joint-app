@@ -1,6 +1,14 @@
 package com.joint.app
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import android.os.Build
+import android.webkit.PermissionRequest
+import android.webkit.WebChromeClient
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -39,9 +47,44 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     private var pageReady = false
 
+    private var pendingWebPermissionRequest: PermissionRequest? = null
+    private lateinit var mediaPermissionLauncher: ActivityResultLauncher<Array<String>>
+    private lateinit var notificationPermissionLauncher: ActivityResultLauncher<String>
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        mediaPermissionLauncher =
+            registerForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions()
+            ) { results ->
+                val request = pendingWebPermissionRequest
+                pendingWebPermissionRequest = null
+
+                if (request != null) {
+                    val allGranted = results.values.all { it }
+                    if (allGranted) {
+                        val allowedResources = request.resources.filter {
+                            it == PermissionRequest.RESOURCE_VIDEO_CAPTURE ||
+                            it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                        }.toTypedArray()
+
+                        if (allowedResources.isNotEmpty()) {
+                            request.grant(allowedResources)
+                        } else {
+                            request.deny()
+                        }
+                    } else {
+                        request.deny()
+                    }
+                }
+            }
+
+        notificationPermissionLauncher =
+            registerForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { /* The operating system records the user's choice. */ }
 
         webView = WebView(this)
         setContentView(webView)
@@ -52,6 +95,60 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         webView.settings.allowContentAccess = false
         webView.settings.mixedContentMode =
             android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                val origin = request.origin
+                val trustedOrigin =
+                    origin.scheme == "https" &&
+                    origin.host in listOf("myjointapp.com", "www.myjointapp.com")
+
+                if (!trustedOrigin) {
+                    request.deny()
+                    return
+                }
+
+                val requestedResources = request.resources.filter {
+                    it == PermissionRequest.RESOURCE_VIDEO_CAPTURE ||
+                    it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                }
+
+                if (requestedResources.isEmpty()) {
+                    request.deny()
+                    return
+                }
+
+                val requiredAndroidPermissions = mutableListOf<String>()
+
+                if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in requestedResources) {
+                    requiredAndroidPermissions.add(Manifest.permission.CAMERA)
+                }
+                if (PermissionRequest.RESOURCE_AUDIO_CAPTURE in requestedResources) {
+                    requiredAndroidPermissions.add(Manifest.permission.RECORD_AUDIO)
+                }
+
+                val missingPermissions = requiredAndroidPermissions.filter {
+                    ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        it
+                    ) != PackageManager.PERMISSION_GRANTED
+                }
+
+                if (missingPermissions.isEmpty()) {
+                    request.grant(requestedResources.toTypedArray())
+                } else {
+                    pendingWebPermissionRequest?.deny()
+                    pendingWebPermissionRequest = request
+                    mediaPermissionLauncher.launch(missingPermissions.toTypedArray())
+                }
+            }
+
+            override fun onPermissionRequestCanceled(request: PermissionRequest) {
+                if (pendingWebPermissionRequest == request) {
+                    pendingWebPermissionRequest = null
+                }
+            }
+        }
 
         webView.webViewClient = object : WebViewClient() {
 
@@ -103,6 +200,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 pageReady = true
                 injectWalletIntegration()
                 queryProducts()
+                requestNotificationPermissionOnce()
             }
         }
 
@@ -174,6 +272,29 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         )
 
         webView.loadUrl("https://myjointapp.com/")
+    }
+
+    private fun requestNotificationPermissionOnce() {
+        if (Build.VERSION.SDK_INT < 33) return
+
+        val alreadyGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (alreadyGranted) return
+
+        val preferences = getSharedPreferences("joint_permissions", MODE_PRIVATE)
+        val alreadyAsked = preferences.getBoolean("notifications_prompted", false)
+
+        if (!alreadyAsked) {
+            preferences.edit()
+                .putBoolean("notifications_prompted", true)
+                .apply()
+            notificationPermissionLauncher.launch(
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+        }
     }
 
     private fun handleBridgeMessage(
