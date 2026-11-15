@@ -63,16 +63,35 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 pendingWebPermissionRequest = null
 
                 if (request != null) {
-                    val allGranted = results.values.all { it }
-                    if (allGranted) {
-                        val allowedResources = request.resources.filter {
-                            it == PermissionRequest.RESOURCE_VIDEO_CAPTURE ||
-                            it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
-                        }.toTypedArray()
+                    val stillTrusted =
+                        request.origin.scheme == "https" &&
+                        request.origin.host in listOf(
+                            "myjointapp.com",
+                            "www.myjointapp.com"
+                        )
 
-                        if (allowedResources.isNotEmpty()) {
-                            request.grant(allowedResources)
-                        } else {
+                    val resourcesToGrant = request.resources.filter { resource ->
+                        when (resource) {
+                            PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
+                                ContextCompat.checkSelfPermission(
+                                    this@MainActivity,
+                                    Manifest.permission.CAMERA
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                            PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
+                                ContextCompat.checkSelfPermission(
+                                    this@MainActivity,
+                                    Manifest.permission.RECORD_AUDIO
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                            else -> false
+                        }
+                    }
+
+                    if (stillTrusted && resourcesToGrant.isNotEmpty()) {
+                        try {
+                            request.grant(resourcesToGrant.toTypedArray())
+                        } catch (_: IllegalStateException) {
                             request.deny()
                         }
                     } else {
@@ -96,50 +115,71 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         webView.settings.mixedContentMode =
             android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
 
+        webView.settings.mediaPlaybackRequiresUserGesture = false
+
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
-                val origin = request.origin
-                val trustedOrigin =
-                    origin.scheme == "https" &&
-                    origin.host in listOf("myjointapp.com", "www.myjointapp.com")
+                runOnUiThread {
+                    val origin = request.origin
+                    val trustedOrigin =
+                        origin.scheme == "https" &&
+                        origin.host in listOf(
+                            "myjointapp.com",
+                            "www.myjointapp.com"
+                        )
 
-                if (!trustedOrigin) {
-                    request.deny()
-                    return
-                }
+                    if (!trustedOrigin) {
+                        request.deny()
+                        return@runOnUiThread
+                    }
 
-                val requestedResources = request.resources.filter {
-                    it == PermissionRequest.RESOURCE_VIDEO_CAPTURE ||
-                    it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
-                }
+                    val requestedResources = request.resources.filter {
+                        it == PermissionRequest.RESOURCE_VIDEO_CAPTURE ||
+                        it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                    }
 
-                if (requestedResources.isEmpty()) {
-                    request.deny()
-                    return
-                }
+                    if (requestedResources.isEmpty()) {
+                        request.deny()
+                        return@runOnUiThread
+                    }
 
-                val requiredAndroidPermissions = mutableListOf<String>()
+                    val missingPermissions = mutableListOf<String>()
 
-                if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in requestedResources) {
-                    requiredAndroidPermissions.add(Manifest.permission.CAMERA)
-                }
-                if (PermissionRequest.RESOURCE_AUDIO_CAPTURE in requestedResources) {
-                    requiredAndroidPermissions.add(Manifest.permission.RECORD_AUDIO)
-                }
+                    if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in requestedResources &&
+                        ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            Manifest.permission.CAMERA
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        missingPermissions.add(Manifest.permission.CAMERA)
+                    }
 
-                val missingPermissions = requiredAndroidPermissions.filter {
-                    ContextCompat.checkSelfPermission(
-                        this@MainActivity,
-                        it
-                    ) != PackageManager.PERMISSION_GRANTED
-                }
+                    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE in requestedResources &&
+                        ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            Manifest.permission.RECORD_AUDIO
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        missingPermissions.add(Manifest.permission.RECORD_AUDIO)
+                    }
 
-                if (missingPermissions.isEmpty()) {
-                    request.grant(requestedResources.toTypedArray())
-                } else {
-                    pendingWebPermissionRequest?.deny()
-                    pendingWebPermissionRequest = request
-                    mediaPermissionLauncher.launch(missingPermissions.toTypedArray())
+                    if (missingPermissions.isEmpty()) {
+                        try {
+                            request.grant(requestedResources.toTypedArray())
+                        } catch (_: IllegalStateException) {
+                            request.deny()
+                        }
+                    } else {
+                        pendingWebPermissionRequest?.let {
+                            try {
+                                it.deny()
+                            } catch (_: Exception) {}
+                        }
+                        pendingWebPermissionRequest = request
+                        mediaPermissionLauncher.launch(
+                            missingPermissions.distinct().toTypedArray()
+                        )
+                    }
                 }
             }
 
@@ -467,10 +507,10 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
             BillingFlowParams.ProductDetailsParams.newBuilder()
                 .setProductDetails(details)
                 .apply {
-    offer?.offerToken
-        ?.takeIf { it.isNotBlank() }
-        ?.let { setOfferToken(it) }
-}
+                    offer?.offerToken
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { setOfferToken(it) }
+                }
                 .build()
 
         val builder = BillingFlowParams.newBuilder()
