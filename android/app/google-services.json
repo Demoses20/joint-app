@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "488603610108",
+    "project_id": "myjointapp",
+    "storage_bucket": "myjointapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:488603610108:android:ca2dd49015c36bd3d92079",
+        "android_client_info": {
+          "package_name": "com.joint.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNFWALYp0Dz5zjmVcYXki8PVSurTIt308"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
