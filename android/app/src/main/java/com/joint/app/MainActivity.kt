@@ -3,7 +3,6 @@ package com.joint.app
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
-import android.os.Build
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import androidx.activity.result.ActivityResult
@@ -275,7 +274,6 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 pageReady = true
                 injectWalletIntegration()
                 queryProducts()
-                requestNotificationPermissionOnce()
             }
         }
 
@@ -347,29 +345,6 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         )
 
         webView.loadUrl("https://myjointapp.com/")
-    }
-
-    private fun requestNotificationPermissionOnce() {
-        if (Build.VERSION.SDK_INT < 33) return
-
-        val alreadyGranted = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (alreadyGranted) return
-
-        val preferences = getSharedPreferences("joint_permissions", MODE_PRIVATE)
-        val alreadyAsked = preferences.getBoolean("notifications_prompted", false)
-
-        if (!alreadyAsked) {
-            preferences.edit()
-                .putBoolean("notifications_prompted", true)
-                .apply()
-            notificationPermissionLauncher.launch(
-                Manifest.permission.POST_NOTIFICATIONS
-            )
-        }
     }
 
     private fun handleBridgeMessage(
@@ -542,10 +517,10 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
             BillingFlowParams.ProductDetailsParams.newBuilder()
                 .setProductDetails(details)
                 .apply {
-    offer?.offerToken
-        ?.takeIf { it.isNotBlank() }
-        ?.let { setOfferToken(it) }
-}
+                    offer?.offerToken
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { setOfferToken(it) }
+                }
                 .build()
 
         val builder = BillingFlowParams.newBuilder()
