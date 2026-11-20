@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     private var pageReady = false
 
     private var pendingWebPermissionRequest: PermissionRequest? = null
+    private var pendingNotificationReply: JavaScriptReplyProxy? = null
     private lateinit var mediaPermissionLauncher: ActivityResultLauncher<Array<String>>
     private lateinit var notificationPermissionLauncher: ActivityResultLauncher<String>
     private lateinit var fileChooserLauncher: ActivityResultLauncher<Intent>
