@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -19,7 +20,6 @@ class JointFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        // MainActivity retrieves the current token when the authenticated JOINT page is ready.
         getSharedPreferences("joint_fcm", MODE_PRIVATE)
             .edit()
             .putString("token", token)
@@ -28,25 +28,35 @@ class JointFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-
         val data = message.data
+        android.util.Log.i("JOINT-FCM", "Push received; data keys=${data.keys}")
+
         val title = data["title"] ?: message.notification?.title ?: "JOINT"
-        val body = data["body"] ?: message.notification?.body
-            ?: "You have a new notification."
+        val body = data["body"] ?: message.notification?.body ?: "You have a new notification."
         val target = data["url"] ?: "https://myjointapp.com/notifications.html"
         val avatarUrl = data["actor_avatar_url"].orEmpty()
+        val attachmentUrl = data["attachment_url"].orEmpty()
+        val previewUrl = data["attachment_preview_url"].orEmpty()
+        val isVideo = data["attachment_type"].orEmpty().contains("video", ignoreCase = true) ||
+            attachmentUrl.substringBefore('?').substringBefore('#').matches(
+                Regex("(?i).*\\.(mp4|webm|mov|m4v)$")
+            )
 
-        // FCM data messages are handled on Firebase's worker thread, so load the
-        // sender's avatar before constructing the notification.
-        val senderAvatar = downloadSenderAvatar(avatarUrl)
+        // Load attachment separately from the sender's avatar. For video, render a
+        // representative frame because Android notification cards cannot play video.
+        val senderAvatar = downloadImage(avatarUrl)
+        val attachmentBitmap = when {
+            previewUrl.isNotBlank() -> downloadImage(previewUrl)
+            isVideo -> downloadVideoFrame(attachmentUrl)
+            attachmentUrl.isNotBlank() -> downloadImage(attachmentUrl)
+            else -> null
+        }
 
         ensureChannel()
-
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("joint_notification_url", target)
         }
-
         val pending = PendingIntent.getActivity(
             this,
             (data["notification_id"] ?: target).hashCode(),
@@ -63,65 +73,75 @@ class JointFirebaseMessagingService : FirebaseMessagingService() {
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
-        // Large icon displays the actual notifier's profile photo.
-        // Keep the JOINT small status-bar icon as the notification identity.
-        if (senderAvatar != null) {
-            builder.setLargeIcon(senderAvatar)
+        if (senderAvatar != null) builder.setLargeIcon(senderAvatar)
+        if (attachmentBitmap != null) {
+            builder.setStyle(
+                NotificationCompat.BigPictureStyle()
+                    .bigPicture(attachmentBitmap)
+                    .bigLargeIcon(senderAvatar)
+                    .setSummaryText(body)
+            )
         }
-
-        val notification = builder.build()
 
         try {
             NotificationManagerCompat.from(this).notify(
                 (data["notification_id"] ?: System.currentTimeMillis().toString()).hashCode(),
-                notification
+                builder.build()
             )
-        } catch (_: SecurityException) {
-            // Android notification permission may have been revoked.
+            android.util.Log.i("JOINT-FCM", "Notification displayed.")
+        } catch (error: SecurityException) {
+            android.util.Log.w("JOINT-FCM", "Notification permission is not granted.", error)
+        } catch (error: Exception) {
+            android.util.Log.e("JOINT-FCM", "Unable to display notification.", error)
         }
     }
 
-    private fun downloadSenderAvatar(rawUrl: String): Bitmap? {
-        if (rawUrl.isBlank()) return null
+    private fun isTrustedMediaUrl(rawUrl: String): Boolean {
+        return try {
+            val uri = Uri.parse(rawUrl)
+            uri.scheme == "https" && !uri.host.isNullOrBlank()
+        } catch (_: Exception) { false }
+    }
 
-        val uri = try {
-            Uri.parse(rawUrl)
-        } catch (_: Exception) {
-            return null
-        }
-
-        // Only download HTTPS profile images from the URL supplied by the server.
-        if (uri.scheme != "https" || uri.host.isNullOrBlank()) return null
-
+    private fun downloadImage(rawUrl: String): Bitmap? {
+        if (!isTrustedMediaUrl(rawUrl)) return null
         var connection: HttpURLConnection? = null
         return try {
             connection = (URL(rawUrl).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 5000
-                readTimeout = 5000
+                connectTimeout = 7000
+                readTimeout = 9000
                 instanceFollowRedirects = true
                 requestMethod = "GET"
                 setRequestProperty("Accept", "image/*")
                 connect()
             }
-
-            // Do not follow a redirect to a non-HTTPS destination.
-            if (connection.url.protocol != "https") return null
-            if (connection.responseCode !in 200..299) return null
-
-            val contentType = connection.contentType.orEmpty()
-            if (!contentType.startsWith("image/")) return null
-
-            val length = connection.contentLengthLong
-            if (length > 2L * 1024L * 1024L) return null
-
+            if (connection.url.protocol != "https" || connection.responseCode !in 200..299) return null
+            if (!connection.contentType.orEmpty().startsWith("image/", ignoreCase = true)) return null
+            if (connection.contentLengthLong > 8L * 1024L * 1024L) return null
             connection.inputStream.use { input ->
-                BitmapFactory.decodeStream(input)
+                val bytes = input.readBytes()
+                if (bytes.size > 8 * 1024 * 1024) null
+                else BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             }
         } catch (error: Exception) {
-            android.util.Log.w("JOINT-FCM", "Could not load notification avatar", error)
+            android.util.Log.w("JOINT-FCM", "Could not load notification image.", error)
             null
         } finally {
             connection?.disconnect()
+        }
+    }
+
+    private fun downloadVideoFrame(rawUrl: String): Bitmap? {
+        if (!isTrustedMediaUrl(rawUrl)) return null
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(rawUrl, HashMap())
+            retriever.getFrameAtTime(1_000_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+        } catch (error: Exception) {
+            android.util.Log.w("JOINT-FCM", "Could not create video notification thumbnail.", error)
+            null
+        } finally {
+            try { retriever.release() } catch (_: Exception) {}
         }
     }
 
