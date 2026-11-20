@@ -23,6 +23,7 @@ import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.android.billingclient.api.*
+import com.google.firebase.messaging.FirebaseMessaging
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest
@@ -285,6 +286,8 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 pageReady = true
                 injectWalletIntegration()
                 queryProducts()
+                publishFcmTokenIfAllowed()
+                handleNotificationIntent(intent)
             }
         }
 
@@ -347,8 +350,26 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 JSONObject()
             }
 
-            if (request.optString("action") == "requestPermission") {
-                runOnUiThread {
+            when (request.optString("action")) {
+                "getToken" -> {
+                    val granted = ContextCompat.checkSelfPermission(
+                        this@MainActivity, Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (!granted) {
+                        replyProxy.postMessage(JSONObject().put("action", "fcmTokenResult")
+                            .put("granted", false).toString())
+                    } else {
+                        FirebaseMessaging.getInstance().token
+                            .addOnCompleteListener { task ->
+                                val response = JSONObject().put("action", "fcmTokenResult")
+                                    .put("granted", true)
+                                if (task.isSuccessful) response.put("token", task.result)
+                                else response.put("error", task.exception?.message ?: "Unable to get FCM token")
+                                replyProxy.postMessage(response.toString())
+                            }
+                    }
+                }
+                "requestPermission" -> runOnUiThread {
                     val alreadyGranted =
                         ContextCompat.checkSelfPermission(
                             this@MainActivity,
@@ -377,12 +398,9 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                         )
                     }
                 }
-            } else {
-                replyProxy.postMessage(
-                    JSONObject()
-                        .put("ok", false)
-                        .put("error", "Unsupported notification action.")
-                        .toString()
+                else -> replyProxy.postMessage(
+                    JSONObject().put("ok", false)
+                        .put("error", "Unsupported notification action.").toString()
                 )
             }
         }
@@ -426,6 +444,35 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         )
 
         webView.loadUrl("https://myjointapp.com/")
+    }
+
+    private fun publishFcmTokenIfAllowed() {
+        if (!pageReady || ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            if (token.isNotBlank() && ::webView.isInitialized) {
+                webView.post {
+                    webView.evaluateJavascript(
+                        "window.dispatchEvent(new Event('jointNativePushToken'));", null
+                    )
+                }
+            }
+        }
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        val target = intent?.getStringExtra("joint_notification_url") ?: return
+        intent.removeExtra("joint_notification_url")
+        val safe = try {
+            val uri = Uri.parse(target)
+            if (uri.scheme == "https" && uri.host in listOf("myjointapp.com", "www.myjointapp.com")) uri.toString()
+            else null
+        } catch (_: Exception) { null }
+        if (safe != null && ::webView.isInitialized) {
+            webView.post { webView.loadUrl(safe) }
+        }
     }
 
     private fun handleBridgeMessage(
@@ -732,6 +779,12 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 null
             )
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationIntent(intent)
     }
 
     override fun onResume() {
