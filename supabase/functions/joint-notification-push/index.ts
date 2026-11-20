@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
+import { SignJWT, importPKCS8 } from "npm:jose@5.9.6";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,28 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status, headers: { ...corsHeaders, "Content-Type": "application/json" },
 });
 
+let cachedFcmAccessToken: { value: string; expiresAt: number } | null = null;
+async function getFcmAccessToken(serviceAccount: Record<string, string>): Promise<string> {
+  if (cachedFcmAccessToken && cachedFcmAccessToken.expiresAt > Date.now() + 60_000) return cachedFcmAccessToken.value;
+  const key = await importPKCS8(serviceAccount.private_key, "RS256");
+  const assertion = await new SignJWT({ scope: "https://www.googleapis.com/auth/firebase.messaging" })
+    .setProtectedHeader({ alg: "RS256", typ: "JWT" })
+    .setIssuer(serviceAccount.client_email)
+    .setSubject(serviceAccount.client_email)
+    .setAudience("https://oauth2.googleapis.com/token")
+    .setIssuedAt()
+    .setExpirationTime("1h")
+    .sign(key);
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.access_token) throw new Error(`Firebase OAuth failed: ${JSON.stringify(result)}`);
+  cachedFcmAccessToken = { value: result.access_token, expiresAt: Date.now() + Number(result.expires_in || 3600) * 1000 };
+  return result.access_token;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "POST required" }, 405);
@@ -19,8 +42,12 @@ Deno.serve(async (req) => {
   const vapidPublicKey = Deno.env.get("JOINT_VAPID_PUBLIC_KEY");
   const vapidPrivateKey = Deno.env.get("JOINT_VAPID_PRIVATE_KEY");
   const vapidSubject = Deno.env.get("JOINT_VAPID_SUBJECT") || "mailto:notifications@myjointapp.com";
-  if (!supabaseUrl || !serviceKey || !vapidPublicKey || !vapidPrivateKey) {
-    return json({ error: "Missing server configuration: Supabase service key and JOINT_VAPID_PUBLIC_KEY / JOINT_VAPID_PRIVATE_KEY are required." }, 500);
+  const firebaseServiceAccountRaw = Deno.env.get("JOINT_FIREBASE_SERVICE_ACCOUNT");
+  if (!supabaseUrl || !serviceKey) {
+    return json({ error: "Missing Supabase URL or service role key." }, 500);
+  }
+  if (!(vapidPublicKey && vapidPrivateKey) && !firebaseServiceAccountRaw) {
+    return json({ error: "Configure VAPID secrets for Web Push and/or JOINT_FIREBASE_SERVICE_ACCOUNT for Android FCM." }, 500);
   }
   // Configure the Database Webhook Authorization header as: Bearer <same service key>.
   const auth = req.headers.get("authorization") || "";
@@ -60,10 +87,21 @@ Deno.serve(async (req) => {
 
   const { data: subscriptions, error: subscriptionError } = await db.from("joint_push_subscriptions")
     .select("id, endpoint, subscription").eq("user_id", recipientId);
-  if (subscriptionError) return json({ error: "Could not load push subscriptions", details: subscriptionError.message }, 500);
-  if (!subscriptions?.length) return json({ ok: true, sent: 0, reason: "Recipient has no registered push devices" });
+  if (subscriptionError) return json({ error: "Could not load Web Push subscriptions", details: subscriptionError.message }, 500);
+  const { data: fcmDeviceRows, error: fcmError } = await db.from("joint_fcm_tokens")
+    .select("id, token").eq("user_id", recipientId);
+  const fcmTableMissing = !!fcmError && (
+    fcmError.code === "42P01" || fcmError.code === "PGRST205" ||
+    /does not exist|schema cache|could not find the table/i.test(String(fcmError.message || ""))
+  );
+  if (fcmError && !fcmTableMissing) {
+    return json({ error: "Could not load FCM tokens", details: fcmError.message }, 500);
+  }
+  if (fcmTableMissing) console.warn("JOINT FCM token table is not installed yet; continuing with browser Web Push only.");
+  const fcmDevices = fcmTableMissing ? [] : (fcmDeviceRows || []);
+  if (!subscriptions?.length && !fcmDevices.length) return json({ ok: true, web_push_sent: 0, fcm_sent: 0, reason: "Recipient has no registered push devices" });
 
-  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+  if (vapidPublicKey && vapidPrivateKey) webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
   const siteUrl = (Deno.env.get("JOINT_SITE_URL") || "https://myjointapp.com").replace(/\/$/, "");
   const target = String(notification.target_url || "/notifications.html");
   const safeTarget = /^https:\/\//i.test(target) ? target : `${siteUrl}/${target.replace(/^\//, "")}`;
@@ -99,7 +137,7 @@ Deno.serve(async (req) => {
 
   let sent = 0;
   let failed = 0;
-  for (const item of subscriptions) {
+  if (vapidPublicKey && vapidPrivateKey) for (const item of (subscriptions || [])) {
     try {
       await webpush.sendNotification(item.subscription, pushPayload, { TTL: 60 * 60 * 24 });
       sent++;
@@ -113,5 +151,44 @@ Deno.serve(async (req) => {
       console.error("JOINT push send failed", { subscriptionId: item.id, statusCode, message: error instanceof Error ? error.message : String(error) });
     }
   }
-  return json({ ok: true, sent, failed, total: subscriptions.length });
+  let fcmSent = 0;
+  let fcmFailed = 0;
+  if (firebaseServiceAccountRaw && fcmDevices?.length) {
+    try {
+      const account = JSON.parse(firebaseServiceAccountRaw);
+      const accessToken = await getFcmAccessToken(account);
+      const projectId = account.project_id;
+      for (const device of fcmDevices) {
+        const response = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ message: {
+            token: device.token,
+            data: {
+              title: String(notification.title || "JOINT notification"),
+              body: String(notification.body || "You have a new notification on JOINT."),
+              url: safeTarget,
+              notification_id: String(notification.id),
+              actor_avatar_url: actorAvatar || "",
+            },
+            android: { priority: "high" },
+          } }),
+        });
+        if (response.ok) fcmSent++;
+        else {
+          fcmFailed++;
+          const detail = await response.json().catch(() => ({}));
+          const errorCode = detail?.error?.details?.find?.((d: any) => d.errorCode)?.errorCode || detail?.error?.status;
+          if (errorCode === "UNREGISTERED") {
+            await db.from("joint_fcm_tokens").delete().eq("id", device.id);
+          }
+          console.error("JOINT FCM send failed", { deviceId: device.id, status: response.status, detail });
+        }
+      }
+    } catch (error) {
+      fcmFailed += fcmDevices.length;
+      console.error("JOINT FCM configuration/send failure", error instanceof Error ? error.message : String(error));
+    }
+  }
+  return json({ ok: true, web_push_sent: sent, web_push_failed: failed, fcm_sent: fcmSent, fcm_failed: fcmFailed, web_push_total: subscriptions?.length || 0, fcm_total: fcmDevices?.length || 0 });
 });
