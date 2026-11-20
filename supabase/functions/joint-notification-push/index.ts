@@ -107,12 +107,13 @@ Deno.serve(async (req) => {
   if (!recipientId) return json({ skipped: true, reason: "Notification has no recipient ID" });
 
   const { data: prefs, error: prefsError } = await db.from("joint_notification_preferences")
-    .select("push_enabled, follows, messages, payments, meetings, courses")
+    .select("push_enabled, follows, followed_posts, messages, payments, meetings, courses")
     .eq("user_id", recipientId).maybeSingle();
   if (prefsError) return json({ error: "Could not read notification preferences", details: prefsError.message }, 500);
   if (prefs) {
     const type = String(notification.event_type || notification.notification_type || "system").toLowerCase();
-    const prefKey = type.includes("follow") || type.includes("live") ? "follows"
+    const prefKey = type.includes("new_post") || type.includes("followed_post") ? "followed_posts"
+      : type.includes("follow") || type.includes("live") ? "follows"
       : type.includes("message") || type.includes("chat") ? "messages"
       : type.includes("diamond") || type.includes("payment") || type.includes("transaction") ? "payments"
       : type.includes("meeting") ? "meetings"
@@ -156,12 +157,27 @@ Deno.serve(async (req) => {
   }
   if (!/^https?:\/\//i.test(actorAvatar)) actorAvatar = "";
 
+  const eventText = `${notification.event_type || ""} ${notification.notification_type || ""} ${notification.entity_type || ""}`.toLowerCase();
+  const isPostNotification = String(notification.entity_type || "").toLowerCase() === "post" || eventText.includes("post");
+  let postMedia: AnyRecord = {};
+  if (isPostNotification) {
+    const postId = firstString([metadata], ["post_id"]) ||
+      (String(notification.entity_type || "").toLowerCase() === "post" ? String(notification.entity_id || "") : "");
+    if (postId) {
+      const { data: postRow, error: postError } = await db.from("joint_posts")
+        .select("id, media_urls").eq("id", postId).maybeSingle();
+      if (postError) console.warn("JOINT push post lookup failed", postError.message);
+      const mediaItems = Array.isArray(postRow?.media_urls) ? postRow.media_urls : [];
+      const firstMedia = mediaItems.find((item: AnyRecord) => item && typeof item === "object" && item.url) || {};
+      postMedia = firstMedia;
+    }
+  }
+
   // Resolve the originating chat message. In JOINT, entity_id may be either
   // a message ID or a conversation ID depending on the notification producer.
   // Try the explicit message ID first, then fall back to the sender/recipient
   // conversation so sticker JSON and private media_path values are still found.
   let message: AnyRecord = {};
-  const eventText = `${notification.event_type || ""} ${notification.notification_type || ""} ${notification.entity_type || ""}`.toLowerCase();
   const isChatNotification = eventText.includes("message") || eventText.includes("chat");
   const explicitMessageId = firstString([metadata], ["message_id", "chat_message_id"]) ||
     (isChatNotification ? String(notification.entity_id || "") : "");
@@ -233,7 +249,7 @@ Deno.serve(async (req) => {
 
   const messageBody = String(message.body || notification.body || "");
   const sticker = stickerFromBody(messageBody) || asObject(metadata.sticker);
-  const sourceObjects = [nestedAttachment, sticker, metadata];
+  const sourceObjects = [nestedAttachment, sticker, postMedia, metadata];
   let attachmentUrl = firstString(sourceObjects, [
     "attachment_url", "media_url", "file_url", "image_url", "video_url",
     "animation_url", "gif_url", "sticker_url", "url", "src",
