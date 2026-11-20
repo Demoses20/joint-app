@@ -58,13 +58,20 @@ function stickerFromBody(body: string): AnyRecord | null {
   const raw = body.slice(index + marker.length).trim();
   try { return asObject(JSON.parse(raw)); } catch { return null; }
 }
+function thumbnailPathFromBody(body: string): string {
+  const marker = "JOINT_CHAT_THUMBNAIL::";
+  const index = body.lastIndexOf(marker);
+  if (index < 0) return "";
+  return body.slice(index + marker.length).trim().split(/\s/)[0] || "";
+}
 function cleanMessageBody(raw: string, isSticker: boolean): string {
   if (/sent (you )?a sticker\s*$/i.test(raw.trim()) && !raw.includes("JOINT_CHAT_STICKER::")) return raw.trim();
   if (isSticker || raw.includes("JOINT_CHAT_STICKER::")) {
     const prefix = raw.split("JOINT_CHAT_STICKER::")[0].trim().replace(/[:\-–—]+$/, "").trim();
     return prefix ? `${prefix}: sent a sticker` : "Sent you a sticker";
   }
-  return raw.replace(/^\s*[^:]{1,100}:\s*JOINT_CHAT_STICKER::[\s\S]*$/, "Sent you a sticker").trim();
+  return raw.replace(/^\s*[^:]{1,100}:\s*JOINT_CHAT_STICKER::[\s\S]*$/, "Sent you a sticker")
+    .replace(/\s*JOINT_CHAT_THUMBNAIL::[^\s]+/g, "").trim();
 }
 
 Deno.serve(async (req) => {
@@ -154,10 +161,14 @@ Deno.serve(async (req) => {
   // Try the explicit message ID first, then fall back to the sender/recipient
   // conversation so sticker JSON and private media_path values are still found.
   let message: AnyRecord = {};
+  const notificationBodyRaw = String(notification.body || "");
   const eventText = `${notification.event_type || ""} ${notification.notification_type || ""} ${notification.entity_type || ""}`.toLowerCase();
-  const isChatNotification = eventText.includes("message") || eventText.includes("chat");
+  const bodyLooksLikeAttachment = /\.(png|jpe?g|gif|webp|avif|mp4|webm|mov|m4v)(?:\s|$|[?#])/i.test(notificationBodyRaw);
+  const bodyLooksLikeSticker = /sent (?:you )?a sticker|sticker|JOINT_CHAT_STICKER::/i.test(notificationBodyRaw);
+  const isChatNotification = eventText.includes("message") || eventText.includes("chat") || bodyLooksLikeAttachment || bodyLooksLikeSticker;
   const explicitMessageId = firstString([metadata], ["message_id", "chat_message_id"]) ||
-    (isChatNotification ? String(notification.entity_id || "") : "");
+    (isChatNotification && !String(notification.entity_type || "").toLowerCase().includes("conversation")
+      ? String(notification.entity_id || "") : "");
   if (explicitMessageId) {
     const { data, error } = await db.from("joint_messages")
       .select("id, conversation_id, body, message_type, media_path, media_url, sender_id, created_at")
@@ -166,58 +177,56 @@ Deno.serve(async (req) => {
     if (data) message = data;
   }
 
-  const notificationBodyRaw = String(notification.body || "");
-  const bodyLooksLikeAttachment = /\.(png|jpe?g|gif|webp|avif|mp4|webm|mov|m4v)(?:\s|$|[?#])/i.test(notificationBodyRaw);
-  const bodyLooksLikeSticker = /sent a sticker|JOINT_CHAT_STICKER::/i.test(notificationBodyRaw);
-  if (!message.id && isChatNotification && actorId) {
+  if (!message.id && isChatNotification) {
     const conversationIds = new Set<string>();
-    const explicitConversationId = firstString([metadata], ["conversation_id", "chat_conversation_id"]);
+    const explicitConversationId = firstString([metadata], ["conversation_id", "chat_conversation_id"]) ||
+      (String(notification.entity_type || "").toLowerCase().includes("conversation") ? String(notification.entity_id || "") : "");
     if (explicitConversationId) conversationIds.add(explicitConversationId);
 
-    // Look up the direct conversation in either participant order.
-    const [forward, reverse] = await Promise.all([
-      db.from("joint_conversations").select("id")
-        .eq("user1_id", recipientId).eq("user2_id", actorId).limit(5),
-      db.from("joint_conversations").select("id")
-        .eq("user1_id", actorId).eq("user2_id", recipientId).limit(5),
-    ]);
-    if (forward.error) console.warn("JOINT push conversation lookup failed", forward.error.message);
-    if (reverse.error) console.warn("JOINT push conversation lookup failed", reverse.error.message);
-    for (const row of [...(forward.data || []), ...(reverse.data || [])]) {
-      if (row?.id) conversationIds.add(String(row.id));
+    // First trust a conversation ID supplied by the notification. Otherwise find
+    // the recipient's direct conversations, regardless of participant ordering.
+    if (!conversationIds.size) {
+      const [forward, reverse] = await Promise.all([
+        db.from("joint_conversations").select("id")
+          .eq("user1_id", recipientId).limit(100),
+        db.from("joint_conversations").select("id")
+          .eq("user2_id", recipientId).limit(100),
+      ]);
+      if (forward.error) console.warn("JOINT push conversation lookup failed", forward.error.message);
+      if (reverse.error) console.warn("JOINT push conversation lookup failed", reverse.error.message);
+      for (const row of [...(forward.data || []), ...(reverse.data || [])]) {
+        if (row?.id) conversationIds.add(String(row.id));
+      }
     }
 
     if (conversationIds.size) {
       let query = db.from("joint_messages")
         .select("id, conversation_id, body, message_type, media_path, media_url, sender_id, created_at")
         .in("conversation_id", [...conversationIds])
-        .eq("sender_id", actorId)
         .order("created_at", { ascending: false })
-        .limit(30);
-      if (notification.created_at) {
-        query = query.lte("created_at", String(notification.created_at));
-      }
+        .limit(100);
+      if (actorId) query = query.eq("sender_id", actorId);
+      else query = query.neq("sender_id", recipientId);
+      if (notification.created_at) query = query.lte("created_at", String(notification.created_at));
       const { data: recentMessages, error } = await query;
       if (error) {
         console.warn("JOINT push recent message lookup failed", error.message);
       } else if (recentMessages?.length) {
         const candidates = recentMessages.filter((candidate: AnyRecord) => {
           const body = String(candidate.body || "");
-          return body.includes("JOINT_CHAT_STICKER::") ||
-            !!candidate.media_path || !!candidate.media_url ||
+          return body.includes("JOINT_CHAT_STICKER::") || !!candidate.media_path || !!candidate.media_url ||
             ["image", "video", "audio"].includes(String(candidate.message_type || "").toLowerCase());
         });
+        const notificationText = notificationBodyRaw.toLowerCase();
+        const fileNames = [...notificationText.matchAll(/([a-z0-9_ .()\-]+\.(?:png|jpe?g|gif|webp|avif|mp4|webm|mov|m4v))/gi)]
+          .map((match: RegExpMatchArray) => match[1].trim()).filter(Boolean);
         const bodyFileMatch = candidates.find((candidate: AnyRecord) => {
-          const candidateBody = String(candidate.body || "").toLowerCase();
-          const notificationBody = notificationBodyRaw.toLowerCase();
-          return candidateBody && notificationBody.includes(candidateBody);
+          const candidateBody = String(candidate.body || "").split("JOINT_CHAT_THUMBNAIL::")[0].trim().toLowerCase();
+          return fileNames.some((name: string) => candidateBody.includes(name) || name.includes(candidateBody));
         });
-        const stickerMatch = candidates.find((candidate: AnyRecord) =>
-          String(candidate.body || "").includes("JOINT_CHAT_STICKER::")
-        );
-        // Prefer exact filename/body matches, then sticker messages, then the
-        // newest media message. A sticker notification should never attach an
-        // unrelated text-only message.
+        const stickerMatch = candidates.find((candidate: AnyRecord) => String(candidate.body || "").includes("JOINT_CHAT_STICKER::"));
+        // Match the exact attachment filename first. For sticker notifications,
+        // never substitute a normal image/video from the conversation.
         message = bodyFileMatch || (bodyLooksLikeSticker ? stickerMatch : null) ||
           (bodyLooksLikeAttachment ? candidates[0] : null) || {};
       }
@@ -251,8 +260,16 @@ Deno.serve(async (req) => {
       message.message_type || "")
   ).toLowerCase();
   const isVideo = attachmentType.includes("video") || /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(attachmentUrl);
+  const thumbnailPath = firstString(sourceObjects, ["thumbnail_path", "preview_path", "poster_path"]) || thumbnailPathFromBody(messageBody);
+  let signedThumbnailUrl = "";
+  if (thumbnailPath) {
+    const thumbnailBucket = String(firstString(sourceObjects, ["thumbnail_bucket", "preview_bucket"]) || "joint-chat-media");
+    const { data: thumbnail, error: thumbnailError } = await db.storage.from(thumbnailBucket).createSignedUrl(thumbnailPath, 60 * 60 * 24 * 3);
+    if (thumbnailError) console.warn("JOINT push thumbnail signing failed", { bucket: thumbnailBucket, message: thumbnailError.message });
+    else signedThumbnailUrl = thumbnail?.signedUrl || "";
+  }
   const explicitPreview = firstString(sourceObjects, ["thumbnail_url", "poster_url", "preview_url", "attachment_thumbnail_url", "media_thumbnail_url"]);
-  const previewUrl = safeHttpUrl(explicitPreview, siteUrl) || (!isVideo && attachmentUrl ? attachmentUrl : "");
+  const previewUrl = safeHttpUrl(explicitPreview, siteUrl) || safeHttpUrl(signedThumbnailUrl, siteUrl) || (!isVideo && attachmentUrl ? attachmentUrl : "");
   const hasSticker = !!sticker.media_url || messageBody.includes("JOINT_CHAT_STICKER::");
   const notificationBody = cleanMessageBody(String(notification.body || messageBody || "You have a new notification on JOINT."), hasSticker);
 
@@ -332,5 +349,6 @@ Deno.serve(async (req) => {
     fcm_sent: fcmSent, fcm_failed: fcmFailed,
     web_push_total: subscriptions?.length || 0, fcm_total: fcmDevices.length,
     attachment_found: !!attachmentUrl, attachment_type: attachmentType || null,
+    attachment_preview_found: !!previewUrl, message_found: !!message.id,
   });
 });
