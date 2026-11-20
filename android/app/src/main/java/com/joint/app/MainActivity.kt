@@ -100,9 +100,19 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
             }
 
         notificationPermissionLauncher =
-            registerForActivityResult(
-                ActivityResultContracts.RequestPermission()
-            ) { /* The operating system records the user's choice. */ }
+    registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val reply = pendingNotificationReply
+        pendingNotificationReply = null
+
+        reply?.postMessage(
+            JSONObject()
+                .put("action", "notificationPermissionResult")
+                .put("granted", granted)
+                .toString()
+        )
+    }
 
         fileChooserLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
