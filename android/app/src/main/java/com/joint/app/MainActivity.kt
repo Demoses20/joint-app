@@ -138,6 +138,8 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         setContentView(webView)
 
         webView.settings.javaScriptEnabled = true
+        // Stable marker lets the website select native FCM onboarding before bridge checks.
+        webView.settings.userAgentString = "${webView.settings.userAgentString} JOINTNativeAndroid"
         webView.settings.domStorageEnabled = true
         webView.settings.allowFileAccess = false
         // Required for user-selected content:// URIs returned by Android's picker.
