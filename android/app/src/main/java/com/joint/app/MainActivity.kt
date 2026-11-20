@@ -318,6 +318,76 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 }
             )
         }
+        if (WebViewFeature.isFeatureSupported(
+        WebViewFeature.WEB_MESSAGE_LISTENER
+    )
+) {
+    WebViewCompat.addWebMessageListener(
+        webView,
+        "jointNativePush",
+        setOf(
+            "https://myjointapp.com",
+            "https://www.myjointapp.com"
+        ),
+        WebViewCompat.WebMessageListener {
+            _, message: WebMessageCompat,
+            sourceOrigin, isMainFrame, replyProxy ->
+
+            if (!isMainFrame ||
+                sourceOrigin.scheme != "https" ||
+                sourceOrigin.host !in listOf(
+                    "myjointapp.com",
+                    "www.myjointapp.com"
+                )
+            ) return@WebMessageListener
+
+            val request = try {
+                JSONObject(message.data ?: "{}")
+            } catch (_: Exception) {
+                JSONObject()
+            }
+
+            if (request.optString("action") == "requestPermission") {
+                runOnUiThread {
+                    val alreadyGranted =
+                        ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                    if (alreadyGranted) {
+                        replyProxy.postMessage(
+                            JSONObject()
+                                .put("action", "notificationPermissionResult")
+                                .put("granted", true)
+                                .toString()
+                        )
+                    } else if (pendingNotificationReply != null) {
+                        replyProxy.postMessage(
+                            JSONObject()
+                                .put("action", "notificationPermissionResult")
+                                .put("granted", false)
+                                .put("error", "Permission request already in progress.")
+                                .toString()
+                        )
+                    } else {
+                        pendingNotificationReply = replyProxy
+                        notificationPermissionLauncher.launch(
+                            Manifest.permission.POST_NOTIFICATIONS
+                        )
+                    }
+                }
+            } else {
+                replyProxy.postMessage(
+                    JSONObject()
+                        .put("ok", false)
+                        .put("error", "Unsupported notification action.")
+                        .toString()
+                )
+            }
+        }
+    )
+}
 
         billingClient = BillingClient.newBuilder(this)
             .setListener(this)
