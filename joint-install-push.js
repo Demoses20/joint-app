@@ -236,6 +236,71 @@
     });
   }
 
+
+  // Native FCM registration is separate from browser Web Push/VAPID.
+  let nativeTokenRegistrationRunning = false;
+  let nativeAuthListenerAttached = false;
+  function requestNativeFcmToken() {
+    return new Promise(resolve => {
+      const bridge = window.jointNativePush;
+      if (!bridge || typeof bridge.postMessage !== 'function') return resolve(null);
+      let done = false;
+      const previous = bridge.onmessage;
+      const finish = value => {
+        if (done) return;
+        done = true;
+        bridge.onmessage = previous || null;
+        resolve(value);
+      };
+      bridge.onmessage = event => {
+        let response;
+        try { response = JSON.parse(event.data || '{}'); } catch (_) { return; }
+        if (response.action === 'fcmTokenResult') finish(response.granted && response.token ? response.token : null);
+        else if (typeof previous === 'function') previous.call(bridge, event);
+      };
+      try { bridge.postMessage(JSON.stringify({ action: 'getToken' })); }
+      catch (_) { finish(null); return; }
+      setTimeout(() => finish(null), 12000);
+    });
+  }
+
+  async function registerNativeFcmToken(attempt = 0) {
+    if (nativeTokenRegistrationRunning || !isNativeAndroid()) return;
+    nativeTokenRegistrationRunning = true;
+    try {
+      const token = await requestNativeFcmToken();
+      if (!token) return;
+      const db = await window.jointSupabaseConnection;
+      if (!db) throw new Error('Supabase client is not ready.');
+      if (!nativeAuthListenerAttached && db.auth?.onAuthStateChange) {
+        nativeAuthListenerAttached = true;
+        db.auth.onAuthStateChange((_event, session) => {
+          if (session?.user) setTimeout(() => registerNativeFcmToken(), 0);
+        });
+      }
+      const { data: { user }, error: authError } = await db.auth.getUser();
+      if (authError) throw authError;
+      if (!user) {
+        if (attempt < 8) setTimeout(() => registerNativeFcmToken(attempt + 1), 1800);
+        return;
+      }
+      const { error } = await db.rpc('joint_register_fcm_token', {
+        p_token: token,
+        p_user_agent: navigator.userAgent
+      });
+      if (error) throw error;
+      localStorage.setItem('joint_native_fcm_registered_v1', 'yes');
+      console.info('JOINT native FCM token registered.');
+    } catch (error) {
+      console.warn('JOINT native FCM registration failed:', error?.message || error);
+      if (attempt < 5) setTimeout(() => registerNativeFcmToken(attempt + 1), 2500);
+    } finally {
+      nativeTokenRegistrationRunning = false;
+    }
+  }
+
+  window.addEventListener('jointNativePushToken', () => registerNativeFcmToken());
+
   let pushRegistrationInProgress = false;
 
   async function ensurePushSubscription(attempt = 0) {
@@ -402,6 +467,7 @@
               await requestNativeNotificationPermission();
 
             if (granted) {
+              await registerNativeFcmToken();
               localStorage.setItem(NOTIFY_COMPLETED, 'yes');
               localStorage.removeItem(NOTIFY_SKIPPED);
               closeModal();
@@ -607,7 +673,10 @@
   window.addEventListener('load', () => {
     // Android native app: do not run browser installation or VAPID setup here.
     if (isNativeAndroid()) {
-      setTimeout(nextNotificationPrompt, 1400);
+      setTimeout(() => {
+        registerNativeFcmToken();
+        nextNotificationPrompt();
+      }, 1400);
       return;
     }
 
