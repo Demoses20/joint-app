@@ -9,10 +9,16 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.graphics.Color
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -59,6 +65,12 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Keep Android system indicators in a dedicated black status bar above JOINT content.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = Color.BLACK
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = 0
 
         mediaPermissionLauncher =
             registerForActivityResult(
@@ -135,7 +147,27 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
         }
 
         webView = WebView(this)
-        setContentView(webView)
+        // Draw the native window edge-to-edge, but keep website content below the
+        // device status bar so the clock, signal and battery indicators never overlap JOINT.
+        val appRoot = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        val webParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        appRoot.addView(webView, webParams)
+        setContentView(appRoot)
+        ViewCompat.setOnApplyWindowInsetsListener(appRoot) { _, insets ->
+            val topInset = insets.getInsets(
+                WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
+            ).top
+            val updated = webView.layoutParams as FrameLayout.LayoutParams
+            if (updated.topMargin != topInset) {
+                updated.topMargin = topInset
+                webView.layoutParams = updated
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(appRoot)
 
         webView.settings.javaScriptEnabled = true
         // Stable marker lets the website select native FCM onboarding before bridge checks.
