@@ -42,15 +42,6 @@
             });
         },
 
-        consumeVerifiedPurchase: function (purchaseToken) {
-            if (!purchaseToken) {
-                throw new Error("A purchase token is required.");
-            }
-
-            sendToAndroid("consume", {
-                purchaseToken: purchaseToken
-            });
-        },
 
         onEvent: function (callback) {
             if (typeof callback !== "function") return;
