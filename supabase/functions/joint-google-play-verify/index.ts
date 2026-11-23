@@ -183,6 +183,9 @@ Deno.serve(async (req) => {
   } catch {
     return json({ ok: false, error: "Invalid request body." }, 400, origin);
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return json({ ok: false, error: "Invalid request body." }, 400, origin);
+  }
   const action = text(body.action, 40);
 
   try {
@@ -257,18 +260,36 @@ Deno.serve(async (req) => {
     }
 
     const accessToken = await googleAccessToken(serviceAccountJson);
-    const path = `/applications/${encodeURIComponent(packageName)}/purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(purchaseToken)}`;
-    const verified = await googleApi(path, accessToken);
+
+    // ProductPurchaseV2 is the current Google API for one-time product verification.
+    // Unlike the legacy endpoint, it does not require productId in the URL.
+    const encodedPackage = encodeURIComponent(packageName);
+    const encodedPurchaseToken = encodeURIComponent(purchaseToken);
+    const v2Path = `/applications/${encodedPackage}/purchases/productsv2/tokens/${encodedPurchaseToken}`;
+    const verified = await googleApi(v2Path, accessToken);
     if (!verified.ok) {
-      console.error("Google purchase lookup failed", verified.status, verified.data?.error?.status || "unknown");
+      console.error("Google ProductPurchaseV2 lookup failed", verified.status, verified.data?.error?.status || "unknown");
       return json({ ok: false, error: "Google Play could not verify this purchase. No Diamonds were credited." }, 409, origin);
     }
 
-    const purchase = verified.data;
-    if (purchase.productId !== productId || purchase.purchaseState !== 0 || Number(purchase.quantity ?? 1) !== 1) {
-      return json({ ok: false, pending: purchase.purchaseState === 2, error: purchase.purchaseState === 2
-        ? "Google Play reports that this payment is still pending. Diamonds will be credited only after payment completes."
-        : "Google Play does not report a completed purchase for this Diamond bundle. No Diamonds were credited." }, purchase.purchaseState === 2 ? 202 : 409, origin);
+    const purchase = verified.data || {};
+    const lineItems = Array.isArray(purchase.productLineItem) ? purchase.productLineItem : [];
+    const matchingItems = lineItems.filter((item: any) => item?.productId === productId);
+    const purchaseState = text(purchase.purchaseStateContext?.purchaseState, 80);
+    const totalQuantity = matchingItems.reduce(
+      (sum: number, item: any) => sum + Math.max(0, Number(item?.quantity) || 0),
+      0,
+    );
+
+    if (purchaseState !== "PURCHASED" || matchingItems.length !== 1 || totalQuantity !== 1) {
+      const pending = purchaseState === "PENDING";
+      return json({
+        ok: false,
+        pending,
+        error: pending
+          ? "Google Play reports that this payment is still pending. Diamonds will be credited only after payment completes."
+          : "Google Play does not report one completed purchase for this Diamond bundle. No Diamonds were credited.",
+      }, pending ? 202 : 409, origin);
     }
 
     const expectedAccountId = await sha256Hex(auth.user.id);
@@ -276,16 +297,18 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "This Google Play purchase is not linked to the currently signed-in JOINT account. No Diamonds were credited." }, 403, origin);
     }
 
-    const purchaseTime = purchase.purchaseTimeMillis
-      ? new Date(Number(purchase.purchaseTimeMillis)).toISOString()
+    const purchaseTime = purchase.purchaseCompletionTime
+      ? new Date(purchase.purchaseCompletionTime).toISOString()
       : null;
+    const orderId = text(purchase.orderId, 200) || null;
+
     const { data: credited, error: creditError } = await db.rpc(
       "joint_diamond_credit_google_play_purchase",
       {
         p_user_id: auth.user.id,
         p_product_id: productId,
         p_purchase_token: purchaseToken,
-        p_order_id: purchase.orderId || null,
+        p_order_id: orderId,
         p_purchase_time: purchaseTime,
       },
     );
@@ -295,20 +318,28 @@ Deno.serve(async (req) => {
     }
     if (!credited?.ok) throw new Error("Google Play verified the payment, but the Diamond credit was not confirmed.");
 
-    let consumed = Number(purchase.consumptionState) === 1;
+    // ProductPurchaseV2 reports consumption under productOfferDetails.
+    // If that state is absent or not consumed, safely retry the existing consume API.
+    const offerDetails = matchingItems[0]?.productOfferDetails || {};
+    let consumed = offerDetails.consumptionState === "CONSUMPTION_STATE_CONSUMED";
     let consumePending = false;
     if (!consumed) {
-      const consumeResult = await googleApi(`${path}:consume`, accessToken, "POST");
+      // The consume endpoint still uses the product-specific legacy URL.
+      const consumePath =
+        `/applications/${encodedPackage}/purchases/products/${encodeURIComponent(productId)}/tokens/${encodedPurchaseToken}:consume`;
+      const consumeResult = await googleApi(consumePath, accessToken, "POST");
       consumed = consumeResult.ok;
       consumePending = !consumeResult.ok;
       if (!consumed) {
         console.error("Google Play consume request pending", consumeResult.status, consumeResult.data?.error?.status || "unknown");
       }
     }
+
     if (consumed) {
+      const now = new Date().toISOString();
       const { error: updateError } = await db
         .from("joint_diamond_google_play_purchases")
-        .update({ consumed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .update({ consumed_at: now, updated_at: now })
         .eq("purchase_token", purchaseToken)
         .eq("user_id", auth.user.id);
       if (updateError) console.error("Could not record Google Play consumption timestamp", updateError.message);
