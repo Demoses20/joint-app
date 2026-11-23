@@ -277,7 +277,8 @@ Deno.serve(async (req) => {
     const matchingItems = lineItems.filter((item: any) => item?.productId === productId);
     const purchaseState = text(purchase.purchaseStateContext?.purchaseState, 80);
     const totalQuantity = matchingItems.reduce(
-      (sum: number, item: any) => sum + Math.max(0, Number(item?.quantity) || 0),
+      (sum: number, item: any) =>
+        sum + Math.max(0, Number(item?.productOfferDetails?.quantity) || 0),
       0,
     );
 
