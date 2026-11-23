@@ -277,8 +277,12 @@ Deno.serve(async (req) => {
     const matchingItems = lineItems.filter((item: any) => item?.productId === productId);
     const purchaseState = text(purchase.purchaseStateContext?.purchaseState, 80);
     const totalQuantity = matchingItems.reduce(
-      (sum: number, item: any) =>
-        sum + Math.max(0, Number(item?.productOfferDetails?.quantity) || 0),
+      (sum: number, item: any) => {
+        const rawQuantity = item?.productOfferDetails?.quantity;
+        // Google treats an omitted quantity as the default single-item purchase.
+        const quantity = rawQuantity == null ? 1 : Number(rawQuantity);
+        return sum + (Number.isFinite(quantity) && quantity > 0 ? quantity : 0);
+      },
       0,
     );
 
