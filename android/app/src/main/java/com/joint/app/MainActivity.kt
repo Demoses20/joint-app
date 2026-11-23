@@ -554,32 +554,6 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 }
             }
 
-            "consume" -> {
-                val token = request.optString("purchaseToken")
-
-                if (token.isBlank()) {
-                    reply.postMessage(
-                        JSONObject()
-                            .put("ok", false)
-                            .put("error", "Missing purchase token.")
-                            .toString()
-                    )
-                } else {
-                    consumeVerifiedPurchase(token) { result ->
-                        reply.postMessage(
-                            JSONObject()
-                                .put(
-                                    "ok",
-                                    result.responseCode ==
-                                        BillingClient.BillingResponseCode.OK
-                                )
-                                .put("message", result.debugMessage)
-                                .toString()
-                        )
-                    }
-                }
-            }
-
             else -> {
                 reply.postMessage(
                     JSONObject()
@@ -770,19 +744,6 @@ class MainActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     sendPurchaseToPage(it)
                 }
             }
-        }
-    }
-
-    private fun consumeVerifiedPurchase(
-        token: String,
-        done: (BillingResult) -> Unit
-    ) {
-        val params = ConsumeParams.newBuilder()
-            .setPurchaseToken(token)
-            .build()
-
-        billingClient.consumeAsync(params) { result, _ ->
-            done(result)
         }
     }
 
