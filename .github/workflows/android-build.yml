@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Android APK
+    name: Build JOINT Android
     runs-on: ubuntu-latest
 
     steps:
@@ -34,6 +34,7 @@ jobs:
         with:
           gradle-version: "8.11.1"
 
+      # Preserve the existing debug APK build
       - name: Build debug APK
         run: gradle -p android assembleDebug
 
@@ -44,3 +45,34 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
+
+      # Decode the private signing key on the temporary runner
+      - name: Prepare signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.JOINT_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          KEYSTORE_FILE="$RUNNER_TEMP/joint-upload-key.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
+          test -s "$KEYSTORE_FILE"
+          echo "JOINT_KEYSTORE_FILE=$KEYSTORE_FILE" >> "$GITHUB_ENV"
+
+      # Build the signed Google Play App Bundle
+      - name: Build signed release AAB
+        env:
+          JOINT_KEYSTORE_PASSWORD: ${{ secrets.JOINT_KEYSTORE_PASSWORD }}
+          JOINT_KEY_ALIAS: ${{ secrets.JOINT_KEY_ALIAS }}
+          JOINT_KEY_PASSWORD: ${{ secrets.JOINT_KEY_PASSWORD }}
+        run: gradle -p android bundleRelease
+
+      - name: Upload signed release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: joint-android-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/joint-upload-key.jks"
