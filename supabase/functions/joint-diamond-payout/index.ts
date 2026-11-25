@@ -10,6 +10,17 @@ const json = (body: unknown, status = 200, origin: string | null = null) => new 
 const str = (v: unknown, max = 200) => String(v ?? "").trim().slice(0, max);
 const ADMIN_EMAIL = "technicaldemoses@gmail.com";
 
+class PaystackError extends Error {
+  status: number;
+  payload: any;
+  constructor(message: string, status: number, payload: any = {}) {
+    super(message);
+    this.name = "PaystackError";
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
 async function paystack(path: string, secret: string, method = "GET", body?: unknown) {
   const response = await fetch(`https://api.paystack.co${path}`, {
     method,
@@ -18,9 +29,16 @@ async function paystack(path: string, secret: string, method = "GET", body?: unk
     signal: AbortSignal.timeout(25000),
   });
   const payload: any = await response.json().catch(() => ({}));
-  if (!response.ok || payload.status === false) throw new Error(payload.message || `Paystack request failed (${response.status}).`);
+  if (!response.ok || payload.status === false) {
+    throw new PaystackError(payload.message || `Paystack request failed (${response.status}).`, response.status, payload);
+  }
   return payload.data;
 }
+
+const isInsufficientBalance = (error: unknown) =>
+  error instanceof Error && /your balance is not enough to fulfil this request|insufficient (funds|balance)|not enough.*balance/i.test(error.message);
+const isTransferNotFound = (error: unknown) =>
+  error instanceof PaystackError && /transfer not found/i.test(error.message);
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
@@ -110,11 +128,97 @@ Deno.serve(async (req) => {
         if (saveError) throw saveError;
         return json({ ok: true, status: transfer.status, reference, transfer_code: transfer.transfer_code || null, message: transfer.status === "otp" ? "Paystack requires an OTP. Use the admin OTP confirmation action." : "Transfer initiated. Verify the final status before treating this payout as paid." }, 200, origin);
       } catch (e) {
-        // Do not automatically reset or refund: a network timeout can occur after Paystack accepted the transfer.
-        await db.from("joint_diamond_payout_requests").update({ payout_metadata: { ...meta, transfer_error: str(e instanceof Error ? e.message : e, 300), transfer_needs_reconciliation: true } }).eq("id", request.id).eq("payout_reference", reference);
-        throw new Error("Paystack initiation could not be confirmed. The request is locked for reconciliation to prevent a duplicate transfer. Check Paystack using reference " + reference + ".");
+        // A definitive insufficient-balance rejection is safe to retry with the SAME Paystack reference.
+        // Any timeout or other uncertain error stays locked for reconciliation; never create a new reference.
+        const insufficient = isInsufficientBalance(e);
+        const failureMeta = {
+          ...meta,
+          transfer_error: str(e instanceof Error ? e.message : e, 300),
+          transfer_needs_reconciliation: true,
+          transfer_retry_safe: insufficient,
+          transfer_retry_in_progress: false,
+          transfer_retry_last_failed_at: new Date().toISOString(),
+        };
+        const { error: metaError } = await db.from("joint_diamond_payout_requests")
+          .update({ payout_metadata: failureMeta })
+          .eq("id", request.id).eq("payout_reference", reference);
+        if (metaError) console.error("Could not save Paystack transfer failure metadata", metaError.message);
+        if (insufficient) {
+          throw new Error("Paystack rejected this transfer because the NGN balance is insufficient. No new payout was created. Fund the Paystack balance, then use Retry after funding. The same payout reference will be reused: " + reference + ".");
+        }
+        throw new Error("Paystack initiation could not be confirmed. The request remains locked for reconciliation to prevent a duplicate transfer. Check Paystack using reference " + reference + ".");
       }
     }
+    if (action === "retry-insufficient-balance") {
+      const requestId = str(body.request_id, 50);
+      if (!/^[0-9a-f-]{36}$/i.test(requestId)) return json({ ok: false, error: "Invalid payout request." }, 400, origin);
+      const { data: request, error } = await db.from("joint_diamond_payout_requests").select("*").eq("id", requestId).maybeSingle();
+      if (error) throw error;
+      if (!request) return json({ ok: false, error: "Payout request not found." }, 404, origin);
+      await requireNigeria(request.user_id);
+      if (String(request.currency).toUpperCase() !== "NGN" || String(request.payout_currency).toUpperCase() !== "NGN" || String(request.payout_provider).toLowerCase() !== "paystack" || String(request.method_label).toLowerCase().indexOf("bank") < 0) {
+        return json({ ok: false, error: "Only Nigerian NGN Paystack bank payouts can be retried here." }, 400, origin);
+      }
+      const meta = request.payout_metadata || {};
+      const reference = `joint_diamond_${request.id.replaceAll("-", "")}`;
+      if (request.status !== "processing" || request.payout_reference !== reference || request.paystack_transfer_code) {
+        return json({ ok: false, error: "This request is not an eligible locked Paystack payout. Verify its existing transfer instead." }, 409, origin);
+      }
+      if (!meta.transfer_needs_reconciliation || !isInsufficientBalance(new Error(str(meta.transfer_error, 300)))) {
+        return json({ ok: false, error: "Retry is allowed only after a recorded Paystack insufficient-balance rejection. Other errors must be reconciled manually." }, 409, origin);
+      }
+      const gross = Number(request.payout_gross_amount), net = Number(request.payout_net_amount);
+      if (!Number.isFinite(gross) || !Number.isFinite(net) || gross <= 0 || net < 50 || Math.round(net * 100) !== net * 100) {
+        return json({ ok: false, error: "The saved payout amount is invalid. Reconcile the request before retrying." }, 400, origin);
+      }
+      const bank = meta.bank || {};
+      const recipient = str(request.paystack_recipient_code || meta.recipient_code || bank.recipient_code, 80);
+      if (!recipient) return json({ ok: false, error: "The verified Paystack recipient code is missing. Do not create a new transfer until the recipient is reconciled." }, 409, origin);
+
+      // Always look up the same reference first. If Paystack already has a transfer, update its status and do not POST again.
+      let existingTransfer: any = null;
+      try {
+        existingTransfer = await paystack(`/transfer/verify/${encodeURIComponent(reference)}`, secret);
+      } catch (verifyError) {
+        if (!isTransferNotFound(verifyError)) {
+          throw new Error("Could not safely verify the existing Paystack reference. No retry was sent. Try reconciliation again later: " + str(verifyError instanceof Error ? verifyError.message : verifyError, 220));
+        }
+      }
+      if (existingTransfer) {
+        const existingStatus = str(existingTransfer.status, 30).toLowerCase();
+        const existingMeta = { ...meta, transfer_status: existingStatus, transfer_id: existingTransfer.id || null, transfer_retry_safe: false, transfer_needs_reconciliation: !["success", "successful", "failed", "reversed"].includes(existingStatus), transfer_retry_in_progress: false, verified_at: new Date().toISOString() };
+        const patch: any = { payout_metadata: existingMeta, paystack_transfer_code: existingTransfer.transfer_code || request.paystack_transfer_code || null };
+        if (existingStatus === "success" || existingStatus === "successful") {
+          patch.status = "paid"; patch.receipt_url = reference; patch.processed_at = new Date().toISOString(); patch.processed_by = auth.user.id;
+        } else if (existingStatus === "failed" || existingStatus === "reversed") {
+          patch.status = existingStatus;
+        }
+        const { error: saveExistingError } = await db.from("joint_diamond_payout_requests").update(patch).eq("id", request.id).eq("status", "processing").eq("payout_reference", reference);
+        if (saveExistingError) throw saveExistingError;
+        return json({ ok: true, status: existingStatus, reference, transfer_code: existingTransfer.transfer_code || null, message: `An existing Paystack transfer was found (${existingStatus}). No second transfer was created.` }, 200, origin);
+      }
+
+      // Paystack explicitly documents retrying a rejected transfer with the SAME reference.
+      // This preserves Paystack's duplicate-reference protection and prevents a second payout.
+      try {
+        const transfer = await paystack("/transfer", secret, "POST", {
+          source: "balance", amount: Math.round(net * 100), recipient, reference, currency: "NGN",
+          reason: `JOINT Diamond withdrawal ${request.id}`,
+        });
+        const retryMeta = { ...meta, transfer_status: transfer.status, transfer_id: transfer.id || null, transfer_error: null, transfer_retry_safe: false, transfer_retry_in_progress: false, transfer_needs_reconciliation: !["success", "successful", "failed", "reversed"].includes(str(transfer.status, 30).toLowerCase()), transfer_retry_succeeded_at: new Date().toISOString() };
+        const { error: saveRetryError } = await db.from("joint_diamond_payout_requests").update({ paystack_transfer_code: transfer.transfer_code || null, payout_metadata: retryMeta }).eq("id", request.id).eq("status", "processing").eq("payout_reference", reference);
+        if (saveRetryError) throw saveRetryError;
+        return json({ ok: true, status: transfer.status, reference, transfer_code: transfer.transfer_code || null, message: transfer.status === "otp" ? "Paystack requires an OTP. Submit the OTP, then verify the transfer status." : "The existing payout was retried using its original reference. Verify the final transfer status before marking it paid." }, 200, origin);
+      } catch (retryError) {
+        const insufficient = isInsufficientBalance(retryError);
+        const retryMeta = { ...meta, transfer_error: str(retryError instanceof Error ? retryError.message : retryError, 300), transfer_needs_reconciliation: true, transfer_retry_safe: insufficient, transfer_retry_in_progress: false, transfer_retry_last_failed_at: new Date().toISOString() };
+        const { error: saveFailureError } = await db.from("joint_diamond_payout_requests").update({ payout_metadata: retryMeta }).eq("id", request.id).eq("status", "processing").eq("payout_reference", reference);
+        if (saveFailureError) console.error("Could not save retry failure metadata", saveFailureError.message);
+        if (insufficient) return json({ ok: false, error: "Paystack still reports insufficient NGN balance. The payout remains held and eligible for another retry after funding. No new payout request was created." }, 409, origin);
+        throw new Error("The retry result could not be confirmed. The payout remains locked; verify the same Paystack reference before any further action: " + reference + ".");
+      }
+    }
+
     if (action === "finalize") {
       const requestId = str(body.request_id, 50), otp = str(body.otp, 12);
       if (!/^[0-9a-f-]{36}$/i.test(requestId) || !/^\d{4,8}$/.test(otp)) return json({ ok: false, error: "Enter the payout request and valid OTP." }, 400, origin);
@@ -131,15 +235,26 @@ Deno.serve(async (req) => {
     if (action === "verify") {
       const requestId = str(body.request_id, 50);
       if (!/^[0-9a-f-]{36}$/i.test(requestId)) return json({ ok: false, error: "Invalid payout request." }, 400, origin);
-      const { data: request, error } = await db.from("joint_diamond_payout_requests").select("id,user_id,status,currency,payout_provider,payout_reference,payout_metadata,payout_net_amount,payout_currency").eq("id", requestId).maybeSingle();
+      const { data: request, error } = await db.from("joint_diamond_payout_requests").select("id,user_id,status,currency,payout_provider,payout_reference,payout_metadata,payout_net_amount,payout_currency,paystack_transfer_code").eq("id", requestId).maybeSingle();
       if (error) throw error;
       if (!request) return json({ ok: false, error: "Payout request not found." }, 404, origin);
       await requireNigeria(request.user_id);
       if (String(request.currency).toUpperCase() !== "NGN" || String(request.payout_currency).toUpperCase() !== "NGN" || String(request.payout_provider).toLowerCase() !== "paystack") return json({ ok: false, error: "Only Nigerian NGN Paystack transfers can be verified here." }, 400, origin);
       if (!request?.payout_reference) return json({ ok: false, error: "No Paystack transfer reference exists for this request." }, 404, origin);
-      const transfer = await paystack(`/transfer/verify/${encodeURIComponent(request.payout_reference)}`, secret);
+      let transfer: any;
+      try {
+        transfer = await paystack(`/transfer/verify/${encodeURIComponent(request.payout_reference)}`, secret);
+      } catch (verifyError) {
+        if (!isTransferNotFound(verifyError)) throw verifyError;
+        const oldMeta = request.payout_metadata || {};
+        const safeRetry = isInsufficientBalance(new Error(str(oldMeta.transfer_error, 300))) && !request.paystack_transfer_code;
+        const notFoundMeta = { ...oldMeta, transfer_status: "not_found", transfer_retry_safe: safeRetry, transfer_needs_reconciliation: true, transfer_retry_in_progress: false, verified_at: new Date().toISOString() };
+        const { error: notFoundSaveError } = await db.from("joint_diamond_payout_requests").update({ payout_metadata: notFoundMeta }).eq("id", request.id).eq("payout_reference", request.payout_reference);
+        if (notFoundSaveError) throw notFoundSaveError;
+        return json({ ok: true, status: "not_found", reference: request.payout_reference, message: safeRetry ? "Paystack has no transfer under this reference. Because the recorded rejection was insufficient balance, this payout can be retried safely with the same reference after funding." : "No Paystack transfer was found. The request remains held for manual reconciliation; no retry was sent." }, 200, origin);
+      }
       const status = str(transfer.status, 30).toLowerCase();
-      const meta = { ...(request.payout_metadata || {}), transfer_status: status, transfer_id: transfer.id || null, verified_at: new Date().toISOString() };
+      const meta = { ...(request.payout_metadata || {}), transfer_status: status, transfer_id: transfer.id || null, transfer_retry_safe: false, transfer_retry_in_progress: false, transfer_needs_reconciliation: !["success", "successful", "failed", "reversed"].includes(status), verified_at: new Date().toISOString() };
       if (status === "success" || status === "successful") {
         const { error: paidError } = await db.from("joint_diamond_payout_requests").update({ status: "paid", payout_metadata: meta, receipt_url: request.payout_reference, processed_at: new Date().toISOString(), processed_by: auth.user.id }).eq("id", request.id).eq("status", "processing");
         if (paidError) throw paidError;
